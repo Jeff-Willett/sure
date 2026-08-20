@@ -197,6 +197,12 @@
         </div>
       <% end %>
     <% end %>
+
+    <% if @entry.myfin_source_records.exists? %>
+      <% dialog.with_section(title: t("myfin.source_lineage.section_title")) do %>
+        <%= render Myfin::SourceLineage.new(entry: @entry) %>
+      <% end %>
+    <% end %>
     <%# Split children list for split parent %>
     <% if @entry.split_parent? %>
       <% dialog.with_section(title: t("splits.show.title"), open: true) do %>

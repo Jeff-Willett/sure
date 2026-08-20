@@ -1,0 +1,38 @@
+<%= render DS::Disclosure.new(title: t("myfin.source_lineage.title")) do %>
+  <div class="space-y-3">
+    <% history_items.each do |item| %>
+      <dl class="rounded-lg border border-primary p-3 text-sm space-y-1">
+        <div class="flex justify-between gap-3">
+          <dt class="text-secondary"><%= t("myfin.source_lineage.source") %></dt>
+          <dd class="text-primary"><%= item.source_name %></dd>
+        </div>
+        <% if item.tab %>
+          <div class="flex justify-between gap-3">
+            <dt class="text-secondary"><%= t("myfin.source_lineage.tab") %></dt>
+            <dd class="text-primary"><%= item.tab %></dd>
+          </div>
+        <% end %>
+        <% if item.row %>
+          <div class="flex justify-between gap-3">
+            <dt class="text-secondary"><%= t("myfin.source_lineage.row") %></dt>
+            <dd class="text-primary"><%= item.row %></dd>
+          </div>
+        <% end %>
+        <div class="flex justify-between gap-3">
+          <dt class="text-secondary"><%= t("myfin.source_lineage.imported") %></dt>
+          <dd class="text-primary"><%= l(item.imported_at, format: :short) %></dd>
+        </div>
+        <div class="flex justify-between gap-3">
+          <dt class="text-secondary"><%= t("myfin.source_lineage.decision") %></dt>
+          <dd class="text-primary"><%= item.decision %></dd>
+        </div>
+        <% if item.match_method %>
+          <div class="flex justify-between gap-3">
+            <dt class="text-secondary"><%= t("myfin.source_lineage.match_method") %></dt>
+            <dd class="text-primary"><%= item.match_method %></dd>
+          </div>
+        <% end %>
+      </dl>
+    <% end %>
+  </div>
+<% end %>

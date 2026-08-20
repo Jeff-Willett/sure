@@ -63,3 +63,12 @@ en:
         skip_confirm_body: "MyFIN will keep the audit record but will not create or match a transaction."
         dismiss_duplicate: "Keep both and dismiss duplicate"
         already_resolved: "This review item has already been resolved."
+    source_lineage:
+      section_title: "Import audit"
+      title: "Source history"
+      source: "Source"
+      tab: "Sheet tab"
+      row: "Row"
+      imported: "Imported"
+      decision: "Decision"
+      match_method: "Match method"
