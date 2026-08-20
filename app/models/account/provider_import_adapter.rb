@@ -1,4 +1,6 @@
 class Account::ProviderImportAdapter
+  CREDIT_CARD_PAYMENT_NAMES = /\A(?:automatic payment(?: - thank)?|automatic credit card payment|credit card payment)\z/i
+
   attr_reader :account, :skipped_entries
 
   def initialize(account)
@@ -210,9 +212,9 @@ class Account::ProviderImportAdapter
 
       # Determine the transaction kind. Activity-label and account-type classification
       # take precedence; an explicit kind supplied by the provider is used as a fallback
-      # for the standard case. A negative amount on a credit-card account can be either
-      # a payment or a merchant credit, so payment classification is deferred until the
-      # transfer matcher has evidence from the corresponding cash-account outflow.
+      # for the standard case. Most negative credit-card amounts stay standard until the
+      # transfer matcher finds corresponding cash-account evidence. A small set of exact
+      # payment descriptions is safe to classify immediately.
       auto_kind = nil
       auto_category = nil
       if Transaction::INTERNAL_MOVEMENT_LABELS.include?(detected_label)
@@ -222,6 +224,8 @@ class Account::ProviderImportAdapter
         auto_category = account.family.investment_contributions_category
       elsif account.accountable_type == "Loan" && amount.negative?
         auto_kind = "loan_payment"
+      elsif account.accountable_type == "CreditCard" && amount.negative? && credit_card_payment_name?(name)
+        auto_kind = "cc_payment"
       end
       auto_kind ||= kind.presence
 
@@ -1013,6 +1017,10 @@ class Account::ProviderImportAdapter
   end
 
   private
+
+    def credit_card_payment_name?(name)
+      name.to_s.strip.match?(CREDIT_CARD_PAYMENT_NAMES)
+    end
 
     # Memoized per adapter instance (which is per-account). Membership in
     # goal_accounts is stable across a sync batch.

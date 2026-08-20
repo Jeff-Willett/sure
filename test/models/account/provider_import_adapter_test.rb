@@ -102,6 +102,36 @@ class Account::ProviderImportAdapterTest < ActiveSupport::TestCase
     assert_equal "standard", entry.transaction.kind
   end
 
+  test "an explicitly named credit card payment is recognized" do
+    adapter = Account::ProviderImportAdapter.new(accounts(:credit_card))
+
+    entry = adapter.import_transaction(
+      external_id: "simplefin_credit_card_payment_1",
+      amount: -4912.44,
+      currency: "USD",
+      date: Date.today,
+      name: "Automatic Credit Card Payment",
+      source: "simplefin"
+    )
+
+    assert_equal "cc_payment", entry.transaction.kind
+  end
+
+  test "a merchant credit containing the word payment stays standard" do
+    adapter = Account::ProviderImportAdapter.new(accounts(:credit_card))
+
+    entry = adapter.import_transaction(
+      external_id: "simplefin_amazon_marketplace_credit_1",
+      amount: -202.04,
+      currency: "USD",
+      date: Date.today,
+      name: "Amazon Marketplace Payment",
+      source: "simplefin"
+    )
+
+    assert_equal "standard", entry.transaction.kind
+  end
+
   test "updates existing transaction instead of creating duplicate" do
     # Create initial transaction
     entry = @adapter.import_transaction(
