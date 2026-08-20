@@ -1,0 +1,4 @@
+en:
+  myfin:
+    reporting_profiles:
+      selector_label: "Reporting profile: %{profile}"

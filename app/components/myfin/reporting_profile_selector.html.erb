@@ -1,0 +1,20 @@
+<%= render DS::Menu.new(variant: :button, placement: "bottom-start") do |menu| %>
+  <% menu.with_button(
+       type: "button",
+       class: "inline-flex items-center gap-1.5 bg-container border border-secondary font-medium rounded-lg pl-3 pr-2 py-2 text-sm cursor-pointer text-primary hover:bg-container-inset-hover focus-ring",
+       aria: { label: t("myfin.reporting_profiles.selector_label", profile: current_profile.name) }
+     ) do %>
+    <span class="whitespace-nowrap"><%= current_profile.name %></span>
+    <%= helpers.icon("chevron-down", size: "sm") %>
+  <% end %>
+
+  <% profiles.each do |profile| %>
+    <% menu.with_item(
+         variant: :button,
+         text: profile.name,
+         href: update_path(profile),
+         method: :patch,
+         selected: selected?(profile)
+       ) %>
+  <% end %>
+<% end %>

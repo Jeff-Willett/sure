@@ -151,6 +151,13 @@ end %>
           <div class="flex items-center gap-2">
             <%= icon("panel-left", as_button: true, data: { action: "app-layout#toggleLeftSidebar" }) %>
 
+            <% if current_myfin_profile %>
+              <%= render Myfin::ReportingProfileSelector.new(
+                current_profile: current_myfin_profile,
+                profiles: Current.family.myfin_reporting_profiles.order(:name)
+              ) %>
+            <% end %>
+
             <% if content_for?(:breadcrumbs) %>
               <%= yield :breadcrumbs %>
             <% else %>
