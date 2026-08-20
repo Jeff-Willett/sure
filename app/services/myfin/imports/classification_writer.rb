@@ -1,13 +1,14 @@
 module Myfin
   module Imports
     class ClassificationWriter
-      def self.call(sure_transaction:, classifications:)
-        new(sure_transaction, classifications).call
+      def self.call(sure_transaction:, classifications:, mirror_native: true)
+        new(sure_transaction, classifications, mirror_native).call
       end
 
-      def initialize(sure_transaction, classifications)
+      def initialize(sure_transaction, classifications, mirror_native)
         @sure_transaction = sure_transaction
         @classifications = classifications
+        @mirror_native = mirror_native
       end
 
       def call
@@ -23,7 +24,7 @@ module Myfin
       end
 
       private
-        attr_reader :sure_transaction, :classifications
+        attr_reader :sure_transaction, :classifications, :mirror_native
 
         def family
           sure_transaction.entry.account.family
@@ -44,7 +45,7 @@ module Myfin
           )
           classification.save!
 
-          mirror_wdg_to_sure!(category_name) if scheme_name == "WDG"
+          mirror_wdg_to_sure!(category_name) if scheme_name == "WDG" && mirror_native
         end
 
         def mirror_wdg_to_sure!(category_name)
