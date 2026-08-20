@@ -7,6 +7,11 @@ class Transaction < ApplicationRecord
 
   has_many :taggings, as: :taggable, dependent: :destroy
   has_many :tags, through: :taggings
+  has_many :myfin_classifications,
+           class_name: "Myfin::TransactionClassification",
+           foreign_key: :transaction_id,
+           inverse_of: :sure_transaction,
+           dependent: :destroy
 
   # File attachments (receipts, invoices, etc.) using Active Storage
   # Supports images (JPEG, PNG, GIF, WebP) and PDFs up to 10MB each

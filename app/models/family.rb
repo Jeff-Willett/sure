@@ -145,6 +145,16 @@ class Family < ApplicationRecord
   validates :assistant_type, inclusion: { in: ASSISTANT_TYPES }
   validates :default_account_sharing, inclusion: { in: SHARING_DEFAULTS }
 
+  has_many :myfin_entities,
+           class_name: "Myfin::Entity",
+           dependent: :destroy
+  has_many :myfin_category_schemes,
+           class_name: "Myfin::CategoryScheme",
+           dependent: :destroy
+  has_many :myfin_reporting_profiles,
+           class_name: "Myfin::ReportingProfile",
+           dependent: :destroy
+
   before_validation :normalize_enabled_currencies!
 
   def primary_currency_code

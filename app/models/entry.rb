@@ -14,6 +14,9 @@ class Entry < ApplicationRecord
   belongs_to :parent_entry, class_name: "Entry", optional: true
 
   has_many :child_entries, class_name: "Entry", foreign_key: :parent_entry_id, dependent: :destroy
+  has_many :myfin_allocations,
+           class_name: "Myfin::EntryAllocation",
+           dependent: :destroy
 
   delegated_type :entryable, types: Entryable::TYPES, dependent: :destroy
   accepts_nested_attributes_for :entryable
