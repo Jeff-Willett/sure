@@ -10,6 +10,14 @@ Rails.application.routes.draw do
     resources :transactions, only: [] do
       resource :classifications, only: :update, controller: :transaction_classifications
     end
+    resources :review_items, only: [ :index, :show ] do
+      member do
+        patch :match_existing
+        patch :create_new
+        patch :skip
+        patch :dismiss_duplicate
+      end
+    end
   end
 
   resources :questrade_items, only: [ :index, :new, :create, :show, :edit, :update, :destroy ] do

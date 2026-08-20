@@ -1,0 +1,37 @@
+<div class="space-y-6 pb-8">
+  <header>
+    <h1 class="text-2xl font-semibold text-primary"><%= t("myfin.review_items.index.title") %></h1>
+    <p class="mt-1 text-sm text-secondary"><%= t("myfin.review_items.index.subtitle") %></p>
+  </header>
+
+  <% if @review_items.empty? %>
+    <%= render DS::Alert.new(variant: :info, message: t("myfin.review_items.index.empty")) %>
+  <% else %>
+    <div class="overflow-hidden rounded-xl bg-container shadow-border-xs">
+      <div class="divide-y divide-secondary">
+        <% @review_items.each do |review_item| %>
+          <% source = review_item.source_record %>
+          <% payload = source.payload.stringify_keys %>
+          <%= link_to myfin_review_item_path(review_item), class: "block p-4 hover:bg-container-inset-hover" do %>
+            <div class="flex items-start justify-between gap-4">
+              <div class="min-w-0">
+                <p class="font-medium text-primary"><%= t("myfin.review_items.reasons.#{review_item.reason}") %></p>
+                <p class="mt-1 text-sm text-secondary">
+                  <%= t("myfin.review_items.index.source", source: source.import_batch.source_kind.humanize) %>
+                  · <%= payload["account"].presence || payload["account_name"].presence || t("myfin.review_items.index.linked_account") %>
+                </p>
+              </div>
+              <div class="shrink-0 text-right text-sm text-secondary">
+                <p><%= payload["date"].presence || payload["observed_on"].presence || t("myfin.review_items.index.date_unknown") %></p>
+                <% if payload["amount"].present? %>
+                  <p class="privacy-sensitive"><%= payload["amount"] %></p>
+                <% end %>
+                <p><%= t("myfin.review_items.index.candidate_count", count: review_item.candidate_entry_ids.length) %></p>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

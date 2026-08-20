@@ -1,0 +1,75 @@
+<% source = @review_item.source_record %>
+<% payload = source.payload.stringify_keys %>
+
+<div class="space-y-6 pb-8">
+  <header>
+    <%= link_to t("myfin.review_items.show.back"), myfin_review_items_path, class: "text-sm text-secondary hover:text-primary" %>
+    <h1 class="mt-2 text-2xl font-semibold text-primary"><%= t("myfin.review_items.show.title") %></h1>
+  </header>
+
+  <%= render DS::Alert.new(
+    variant: :warning,
+    title: t("myfin.review_items.reasons.#{@review_item.reason}"),
+    message: t("myfin.review_items.show.reason_help")
+  ) %>
+
+  <section class="rounded-xl bg-container p-5 shadow-border-xs space-y-3">
+    <h2 class="font-medium text-primary"><%= t("myfin.review_items.show.source_row") %></h2>
+    <dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+      <div><dt class="text-secondary"><%= t("myfin.review_items.show.source") %></dt><dd class="text-primary"><%= source.import_batch.source_kind.humanize %></dd></div>
+      <div><dt class="text-secondary"><%= t("myfin.review_items.show.account") %></dt><dd class="text-primary"><%= payload["account"].presence || payload["account_name"].presence || t("myfin.review_items.index.linked_account") %></dd></div>
+      <div><dt class="text-secondary"><%= t("myfin.review_items.show.date") %></dt><dd class="text-primary"><%= payload["date"].presence || payload["observed_on"].presence || t("myfin.review_items.index.date_unknown") %></dd></div>
+      <% if payload["amount"].present? %>
+        <div><dt class="text-secondary"><%= t("myfin.review_items.show.amount") %></dt><dd class="privacy-sensitive text-primary"><%= payload["amount"] %></dd></div>
+      <% end %>
+      <% description = payload["description"].presence || payload["name"].presence %>
+      <% if description %>
+        <div class="sm:col-span-2"><dt class="text-secondary"><%= t("myfin.review_items.show.description") %></dt><dd class="text-primary"><%= description %></dd></div>
+      <% end %>
+    </dl>
+  </section>
+
+  <% if @review_item.status == "open" %>
+    <section class="space-y-3">
+      <h2 class="font-medium text-primary"><%= t("myfin.review_items.show.candidates") %></h2>
+      <% if @candidates.any? %>
+        <%= render partial: "candidate", collection: @candidates, as: :entry, locals: { review_item: @review_item } %>
+      <% else %>
+        <p class="text-sm text-secondary"><%= t("myfin.review_items.show.no_candidates") %></p>
+      <% end %>
+    </section>
+
+    <section class="rounded-xl bg-container p-5 shadow-border-xs space-y-3">
+      <h2 class="font-medium text-primary"><%= t("myfin.review_items.show.create_new") %></h2>
+      <%= styled_form_with url: create_new_myfin_review_item_path(@review_item), method: :patch, class: "flex items-end gap-3" do |form| %>
+        <div class="grow">
+          <%= label_tag :account_id, t("myfin.review_items.show.account"), class: "text-sm text-secondary" %>
+          <%= select_tag :account_id, options_from_collection_for_select(@accounts, :id, :name), class: "form-field__input w-full" %>
+        </div>
+        <%= form.submit t("myfin.review_items.show.create_button") %>
+      <% end %>
+    </section>
+
+    <div class="flex flex-wrap gap-2">
+      <%= render DS::Button.new(
+        text: t("myfin.review_items.show.skip"),
+        href: skip_myfin_review_item_path(@review_item),
+        method: :patch,
+        variant: :outline,
+        confirm: CustomConfirm.new(
+          title: t("myfin.review_items.show.skip_confirm_title"),
+          body: t("myfin.review_items.show.skip_confirm_body"),
+          btn_text: t("myfin.review_items.show.skip")
+        )
+      ) %>
+      <%= render DS::Button.new(
+        text: t("myfin.review_items.show.dismiss_duplicate"),
+        href: dismiss_duplicate_myfin_review_item_path(@review_item),
+        method: :patch,
+        variant: :ghost
+      ) %>
+    </div>
+  <% else %>
+    <%= render DS::Alert.new(variant: :success, message: t("myfin.review_items.show.already_resolved")) %>
+  <% end %>
+</div>

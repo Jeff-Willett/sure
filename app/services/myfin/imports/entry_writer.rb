@@ -4,15 +4,17 @@ module Myfin
     class InvalidOwnershipTotal < StandardError; end
 
     class EntryWriter
-      def self.call(batch:, account:, row:, reconciliation:)
-        new(batch:, account:, row:, reconciliation:).call
+      def self.call(batch:, account:, row:, reconciliation:, source_record: nil, force_create: false)
+        new(batch:, account:, row:, reconciliation:, source_record:, force_create:).call
       end
 
-      def initialize(batch:, account:, row:, reconciliation:)
+      def initialize(batch:, account:, row:, reconciliation:, source_record: nil, force_create: false)
         @batch = batch
         @account = account
         @row = row
         @reconciliation = reconciliation
+        @source_record = source_record
+        @force_create = force_create
       end
 
       def call
@@ -31,18 +33,30 @@ module Myfin
       end
 
       private
-        attr_reader :batch, :account, :row, :reconciliation
+        attr_reader :batch, :account, :row, :reconciliation, :source_record, :force_create
 
         def write_entry!
-          entry = Account::ProviderImportAdapter.new(account).import_transaction(
-            external_id: stable_external_id,
-            amount: row.amount,
-            currency: row.currency,
-            date: row.reporting_date,
-            name: row.name,
-            source: import_source,
-            extra: { "myfin" => { "pending" => row.pending } }
-          )
+          entry = if force_create
+            account.entries.create!(
+              entryable: Transaction.new(extra: { "myfin" => { "pending" => row.pending } }),
+              external_id: stable_external_id,
+              amount: row.amount,
+              currency: row.currency,
+              date: row.reporting_date,
+              name: row.name,
+              source: import_source
+            )
+          else
+            Account::ProviderImportAdapter.new(account).import_transaction(
+              external_id: stable_external_id,
+              amount: row.amount,
+              currency: row.currency,
+              date: row.reporting_date,
+              name: row.name,
+              source: import_source,
+              extra: { "myfin" => { "pending" => row.pending } }
+            )
+          end
 
           ensure_default_allocation!(entry)
           ClassificationWriter.call(
@@ -74,7 +88,7 @@ module Myfin
         end
 
         def create_source_record!(decision:, entry: nil)
-          batch.source_records.create!(
+          attributes = {
             entry: entry,
             source_record_key: row.source_key,
             row_fingerprint: RowFingerprint.call(row),
@@ -82,7 +96,16 @@ module Myfin
             decision: decision,
             match_method: reconciliation.match_method,
             match_confidence: reconciliation.confidence
-          )
+          }
+
+          if source_record
+            raise ArgumentError, "source record belongs to another import batch" unless source_record.import_batch_id == batch.id
+
+            source_record.update!(attributes)
+            source_record
+          else
+            batch.source_records.create!(attributes)
+          end
         end
 
         def ensure_default_allocation!(entry)

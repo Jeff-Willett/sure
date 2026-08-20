@@ -1,0 +1,30 @@
+<%# locals: (review_item:, entry:) %>
+<div class="rounded-lg border border-primary p-4 space-y-3">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <p class="font-medium text-primary"><%= entry.name %></p>
+      <p class="text-sm text-secondary"><%= entry.account.name %> · <%= entry.date %></p>
+    </div>
+    <p class="privacy-sensitive font-medium text-primary"><%= entry.amount_money.format %></p>
+  </div>
+
+  <% classifications = entry.transaction.myfin_classifications.includes(:category_scheme, :scheme_category) %>
+  <% if classifications.any? %>
+    <dl class="text-sm text-secondary">
+      <% classifications.each do |classification| %>
+        <div class="flex justify-between gap-3">
+          <dt><%= classification.category_scheme.name %></dt>
+          <dd><%= classification.scheme_category.name %></dd>
+        </div>
+      <% end %>
+    </dl>
+  <% end %>
+
+  <%= render DS::Button.new(
+    text: t("myfin.review_items.show.match_existing"),
+    href: match_existing_myfin_review_item_path(review_item, candidate_entry_id: entry.id),
+    method: :patch,
+    variant: :primary,
+    size: :sm
+  ) %>
+</div>
