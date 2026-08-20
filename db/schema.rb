@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_20_000200) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_20_000300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -1424,6 +1424,22 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_000200) do
     t.check_constraint "role::text = ANY (ARRAY['owner'::character varying, 'joint_owner'::character varying, 'custodian'::character varying, 'reporting_only'::character varying]::text[])", name: "chk_myfin_account_entities_role"
   end
 
+  create_table "myfin_classification_exports", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "applied_at"
+    t.uuid "batch_id", null: false
+    t.datetime "created_at", null: false
+    t.string "data_fingerprint"
+    t.string "dry_run_fingerprint"
+    t.datetime "exported_at", null: false
+    t.uuid "family_id", null: false
+    t.integer "row_count", default: 0, null: false
+    t.string "spreadsheet_id"
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "batch_id"], name: "index_myfin_classification_exports_on_family_id_and_batch_id", unique: true
+    t.index ["family_id"], name: "index_myfin_classification_exports_on_family_id"
+    t.index ["spreadsheet_id"], name: "index_myfin_classification_exports_on_spreadsheet_id", unique: true, where: "(spreadsheet_id IS NOT NULL)"
+  end
+
   create_table "myfin_category_schemes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.uuid "entity_id"
@@ -2570,6 +2586,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_000200) do
   add_foreign_key "mobile_devices", "users"
   add_foreign_key "myfin_account_entities", "accounts", on_delete: :cascade
   add_foreign_key "myfin_account_entities", "myfin_entities", column: "entity_id", on_delete: :cascade
+  add_foreign_key "myfin_classification_exports", "families", on_delete: :cascade
   add_foreign_key "myfin_category_schemes", "families", on_delete: :cascade
   add_foreign_key "myfin_category_schemes", "myfin_entities", column: "entity_id", on_delete: :nullify
   add_foreign_key "myfin_entities", "families", on_delete: :cascade

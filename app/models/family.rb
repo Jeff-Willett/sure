@@ -160,6 +160,9 @@ class Family < ApplicationRecord
   has_many :myfin_review_items,
            class_name: "Myfin::ReviewItem",
            dependent: :destroy
+  has_many :myfin_classification_exports,
+           class_name: "Myfin::ClassificationExport",
+           dependent: :destroy
 
   before_validation :normalize_enabled_currencies!
 
