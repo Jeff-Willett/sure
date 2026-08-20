@@ -86,6 +86,22 @@ class Account::ProviderImportAdapterTest < ActiveSupport::TestCase
                  "a repayment on a Loan account must stay loan_payment, not the provider's funds_movement"
   end
 
+  test "a credit on a credit card stays standard until it is matched as a payment" do
+    credit_card = accounts(:credit_card)
+    adapter = Account::ProviderImportAdapter.new(credit_card)
+
+    entry = adapter.import_transaction(
+      external_id: "simplefin_merchant_refund_1",
+      amount: -49.21,
+      currency: "USD",
+      date: Date.today,
+      name: "Merchant refund",
+      source: "simplefin"
+    )
+
+    assert_equal "standard", entry.transaction.kind
+  end
+
   test "updates existing transaction instead of creating duplicate" do
     # Create initial transaction
     entry = @adapter.import_transaction(

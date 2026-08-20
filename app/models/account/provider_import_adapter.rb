@@ -210,11 +210,9 @@ class Account::ProviderImportAdapter
 
       # Determine the transaction kind. Activity-label and account-type classification
       # take precedence; an explicit kind supplied by the provider is used as a fallback
-      # for the standard case. A provider such as Up flags internal transfers and
-      # round-ups (via relationships.transferAccount) and passes funds_movement, but a
-      # repayment imported onto a linked Loan/CreditCard account must stay
-      # loan_payment/cc_payment (a budgeted expense) rather than being reclassified, so
-      # the account-type branches below win over the provider hint.
+      # for the standard case. A negative amount on a credit-card account can be either
+      # a payment or a merchant credit, so payment classification is deferred until the
+      # transfer matcher has evidence from the corresponding cash-account outflow.
       auto_kind = nil
       auto_category = nil
       if Transaction::INTERNAL_MOVEMENT_LABELS.include?(detected_label)
@@ -224,8 +222,6 @@ class Account::ProviderImportAdapter
         auto_category = account.family.investment_contributions_category
       elsif account.accountable_type == "Loan" && amount.negative?
         auto_kind = "loan_payment"
-      elsif account.accountable_type == "CreditCard" && amount.negative?
-        auto_kind = "cc_payment"
       end
       auto_kind ||= kind.presence
 
