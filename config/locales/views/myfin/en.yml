@@ -2,3 +2,21 @@ en:
   myfin:
     reporting_profiles:
       selector_label: "Reporting profile: %{profile}"
+    transaction_dimensions:
+      title: "MyFIN dimensions"
+    entry_allocations:
+      entity: "Owner or entity"
+      amount: "Allocated amount"
+      total_help: "Allocated amounts must total %{amount}."
+      save: "Save ownership"
+      updated: "Ownership allocation saved."
+      invalid: "Ownership allocation could not be saved: %{message}"
+      invalid_entity: "Choose active entities from this family."
+    transaction_classifications:
+      title: "JPW, WDG, and source categories"
+      unclassified: "Unclassified"
+      save: "Save categories"
+      updated: "MyFIN categories saved."
+      invalid: "MyFIN categories could not be saved: %{message}"
+      invalid_scheme: "Choose a category scheme from this family."
+      invalid_category: "Choose a category from the selected scheme."

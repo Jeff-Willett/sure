@@ -4,6 +4,12 @@ require "sidekiq/cron/web"
 Rails.application.routes.draw do
   namespace :myfin do
     resource :reporting_profile, only: :update
+    resources :entries, only: [] do
+      resource :allocation, only: :update, controller: :entry_allocations
+    end
+    resources :transactions, only: [] do
+      resource :classifications, only: :update, controller: :transaction_classifications
+    end
   end
 
   resources :questrade_items, only: [ :index, :new, :create, :show, :edit, :update, :destroy ] do

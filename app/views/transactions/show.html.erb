@@ -133,6 +133,20 @@
       </div>
     <% end %>
 
+    <% if Current.family.myfin_entities.active.exists? %>
+      <% dialog.with_section(title: t("myfin.transaction_dimensions.title")) do %>
+        <div class="space-y-4">
+          <%= render "myfin/entry_allocations/fields", entry: @entry %>
+
+          <% if Current.family.myfin_category_schemes.exists? %>
+            <%= render DS::Disclosure.new(title: t("myfin.transaction_classifications.title")) do %>
+              <%= render "myfin/transaction_classifications/fields", transaction: @entry.transaction %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+
     <% dialog.with_section(title: t(".attachments")) do %>
       <%= render "transactions/attachments", transaction: @entry.transaction, can_upload: can_annotate_entry?, can_delete: can_edit_entry? %>
     <% end %>

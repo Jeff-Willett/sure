@@ -1,6 +1,4 @@
 module Myfin
-  class AllocationTotalError < StandardError; end
-
   class EntryAllocation < ApplicationRecord
     self.table_name = "myfin_entry_allocations"
 
