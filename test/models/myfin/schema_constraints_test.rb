@@ -12,6 +12,9 @@ class MyfinSchemaConstraintsTest < ActiveSupport::TestCase
     assert_includes tables, "myfin_transaction_classifications"
     assert_includes tables, "myfin_reporting_profiles"
     assert_includes tables, "myfin_reporting_profile_entities"
+    assert_includes tables, "myfin_import_batches"
+    assert_includes tables, "myfin_source_records"
+    assert_includes tables, "myfin_review_items"
 
     index = ActiveRecord::Base.connection
       .indexes(:myfin_transaction_classifications)

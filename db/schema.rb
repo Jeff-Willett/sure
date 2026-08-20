@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_20_000100) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_20_000200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -1462,6 +1462,24 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_000100) do
     t.check_constraint "allocation_source::text = ANY (ARRAY['account_default'::character varying, 'manual'::character varying, 'rule'::character varying, 'import'::character varying]::text[])", name: "chk_myfin_entry_allocations_source"
   end
 
+  create_table "myfin_import_batches", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "completed_at"
+    t.jsonb "counts", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.text "error_summary"
+    t.uuid "family_id", null: false
+    t.string "source_fingerprint", null: false
+    t.string "source_kind", null: false
+    t.string "source_locator", null: false
+    t.datetime "started_at"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "source_kind", "source_locator", "source_fingerprint"], name: "idx_myfin_unique_import_batch", unique: true
+    t.index ["family_id"], name: "index_myfin_import_batches_on_family_id"
+    t.check_constraint "source_kind::text = ANY (ARRAY['google_sheet'::character varying, 'simplefin'::character varying, 'csv'::character varying, 'manual'::character varying]::text[])", name: "chk_myfin_import_batches_source_kind"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "chk_myfin_import_batches_status"
+  end
+
   create_table "myfin_reporting_profile_entities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.uuid "entity_id", null: false
@@ -1485,6 +1503,25 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_000100) do
     t.index ["preferred_category_scheme_id"], name: "idx_myfin_profile_preferred_scheme"
   end
 
+  create_table "myfin_review_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.jsonb "candidate_entry_ids", default: [], null: false
+    t.datetime "created_at", null: false
+    t.uuid "family_id", null: false
+    t.string "reason", null: false
+    t.text "resolution_note"
+    t.datetime "resolved_at"
+    t.uuid "resolved_by_id"
+    t.uuid "source_record_id", null: false
+    t.string "status", default: "open", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id"], name: "index_myfin_review_items_on_family_id"
+    t.index ["resolved_by_id"], name: "index_myfin_review_items_on_resolved_by_id"
+    t.index ["source_record_id", "reason"], name: "index_myfin_review_items_on_source_record_id_and_reason", unique: true
+    t.index ["source_record_id"], name: "index_myfin_review_items_on_source_record_id"
+    t.check_constraint "reason::text = ANY (ARRAY['malformed_account'::character varying, 'duplicate_candidate'::character varying, 'ambiguous_match'::character varying, 'uncertain_category'::character varying, 'unknown_account'::character varying, 'invalid_row'::character varying, 'pending_replacement'::character varying]::text[])", name: "chk_myfin_review_items_reason"
+    t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'resolved'::character varying, 'dismissed'::character varying]::text[])", name: "chk_myfin_review_items_status"
+  end
+
   create_table "myfin_scheme_categories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.uuid "category_scheme_id", null: false
@@ -1498,6 +1535,24 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_000100) do
     t.index ["category_scheme_id", "parent_id", "name"], name: "idx_myfin_unique_child_scheme_category", unique: true, where: "(parent_id IS NOT NULL)"
     t.index ["category_scheme_id"], name: "idx_myfin_scheme_category_scheme"
     t.index ["parent_id"], name: "index_myfin_scheme_categories_on_parent_id"
+  end
+
+  create_table "myfin_source_records", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "decision", null: false
+    t.uuid "entry_id"
+    t.uuid "import_batch_id", null: false
+    t.decimal "match_confidence", precision: 5, scale: 4
+    t.string "match_method"
+    t.jsonb "payload", default: {}, null: false
+    t.string "row_fingerprint", null: false
+    t.string "source_record_key", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entry_id"], name: "index_myfin_source_records_on_entry_id"
+    t.index ["import_batch_id", "source_record_key"], name: "idx_myfin_unique_source_record", unique: true
+    t.index ["import_batch_id"], name: "index_myfin_source_records_on_import_batch_id"
+    t.check_constraint "decision::text = ANY (ARRAY['created'::character varying, 'matched'::character varying, 'skipped'::character varying, 'review'::character varying]::text[])", name: "chk_myfin_source_records_decision"
+    t.check_constraint "match_confidence IS NULL OR match_confidence >= 0::numeric AND match_confidence <= 1::numeric", name: "chk_myfin_source_records_confidence"
   end
 
   create_table "myfin_transaction_classifications", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -2520,12 +2575,18 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_000100) do
   add_foreign_key "myfin_entities", "families", on_delete: :cascade
   add_foreign_key "myfin_entry_allocations", "entries", on_delete: :cascade
   add_foreign_key "myfin_entry_allocations", "myfin_entities", column: "entity_id", on_delete: :restrict
+  add_foreign_key "myfin_import_batches", "families", on_delete: :cascade
   add_foreign_key "myfin_reporting_profile_entities", "myfin_entities", column: "entity_id", on_delete: :cascade
   add_foreign_key "myfin_reporting_profile_entities", "myfin_reporting_profiles", column: "reporting_profile_id", on_delete: :cascade
   add_foreign_key "myfin_reporting_profiles", "families", on_delete: :cascade
   add_foreign_key "myfin_reporting_profiles", "myfin_category_schemes", column: "preferred_category_scheme_id", on_delete: :nullify
+  add_foreign_key "myfin_review_items", "families", on_delete: :cascade
+  add_foreign_key "myfin_review_items", "myfin_source_records", column: "source_record_id", on_delete: :cascade
+  add_foreign_key "myfin_review_items", "users", column: "resolved_by_id", on_delete: :nullify
   add_foreign_key "myfin_scheme_categories", "myfin_category_schemes", column: "category_scheme_id", on_delete: :cascade
   add_foreign_key "myfin_scheme_categories", "myfin_scheme_categories", column: "parent_id", on_delete: :restrict
+  add_foreign_key "myfin_source_records", "entries", on_delete: :nullify
+  add_foreign_key "myfin_source_records", "myfin_import_batches", column: "import_batch_id", on_delete: :cascade
   add_foreign_key "myfin_transaction_classifications", "myfin_category_schemes", column: "category_scheme_id", on_delete: :restrict
   add_foreign_key "myfin_transaction_classifications", "myfin_scheme_categories", column: "scheme_category_id", on_delete: :restrict
   add_foreign_key "myfin_transaction_classifications", "transactions", on_delete: :cascade

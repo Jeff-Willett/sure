@@ -17,6 +17,9 @@ class Entry < ApplicationRecord
   has_many :myfin_allocations,
            class_name: "Myfin::EntryAllocation",
            dependent: :destroy
+  has_many :myfin_source_records,
+           class_name: "Myfin::SourceRecord",
+           dependent: :nullify
 
   delegated_type :entryable, types: Entryable::TYPES, dependent: :destroy
   accepts_nested_attributes_for :entryable

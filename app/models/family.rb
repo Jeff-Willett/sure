@@ -154,6 +154,12 @@ class Family < ApplicationRecord
   has_many :myfin_reporting_profiles,
            class_name: "Myfin::ReportingProfile",
            dependent: :destroy
+  has_many :myfin_import_batches,
+           class_name: "Myfin::ImportBatch",
+           dependent: :destroy
+  has_many :myfin_review_items,
+           class_name: "Myfin::ReviewItem",
+           dependent: :destroy
 
   before_validation :normalize_enabled_currencies!
 
