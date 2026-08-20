@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_20_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -1407,6 +1407,119 @@ ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
     t.index ["user_id"], name: "index_mobile_devices_on_user_id"
   end
 
+  create_table "myfin_account_entities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "account_id", null: false
+    t.datetime "created_at", null: false
+    t.date "ends_on"
+    t.uuid "entity_id", null: false
+    t.decimal "ownership_percent", precision: 7, scale: 4, default: "100.0", null: false
+    t.string "role", default: "owner", null: false
+    t.date "starts_on"
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "entity_id", "starts_on"], name: "idx_myfin_account_entity_period", unique: true
+    t.index ["account_id"], name: "index_myfin_account_entities_on_account_id"
+    t.index ["entity_id"], name: "index_myfin_account_entities_on_entity_id"
+    t.check_constraint "ends_on IS NULL OR starts_on IS NULL OR ends_on >= starts_on", name: "chk_myfin_account_entities_dates"
+    t.check_constraint "ownership_percent >= 0::numeric AND ownership_percent <= 100::numeric", name: "chk_myfin_account_entities_percent"
+    t.check_constraint "role::text = ANY (ARRAY['owner'::character varying, 'joint_owner'::character varying, 'custodian'::character varying, 'reporting_only'::character varying]::text[])", name: "chk_myfin_account_entities_role"
+  end
+
+  create_table "myfin_category_schemes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "entity_id"
+    t.uuid "family_id", null: false
+    t.boolean "is_default", default: false, null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_myfin_category_schemes_on_entity_id"
+    t.index ["family_id", "name"], name: "index_myfin_category_schemes_on_family_id_and_name", unique: true
+    t.index ["family_id"], name: "idx_myfin_one_default_category_scheme", unique: true, where: "is_default"
+    t.index ["family_id"], name: "index_myfin_category_schemes_on_family_id"
+  end
+
+  create_table "myfin_entities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "entity_type", null: false
+    t.uuid "family_id", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "name"], name: "index_myfin_entities_on_family_id_and_name", unique: true
+    t.index ["family_id"], name: "index_myfin_entities_on_family_id"
+    t.check_constraint "entity_type::text = ANY (ARRAY['person'::character varying, 'business'::character varying, 'household'::character varying, 'other'::character varying]::text[])", name: "chk_myfin_entities_type"
+  end
+
+  create_table "myfin_entry_allocations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "allocation_source", null: false
+    t.decimal "amount", precision: 19, scale: 4, null: false
+    t.datetime "created_at", null: false
+    t.uuid "entity_id", null: false
+    t.uuid "entry_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_myfin_entry_allocations_on_entity_id"
+    t.index ["entry_id", "entity_id"], name: "index_myfin_entry_allocations_on_entry_id_and_entity_id", unique: true
+    t.index ["entry_id"], name: "index_myfin_entry_allocations_on_entry_id"
+    t.check_constraint "allocation_source::text = ANY (ARRAY['account_default'::character varying, 'manual'::character varying, 'rule'::character varying, 'import'::character varying]::text[])", name: "chk_myfin_entry_allocations_source"
+  end
+
+  create_table "myfin_reporting_profile_entities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "entity_id", null: false
+    t.uuid "reporting_profile_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_myfin_reporting_profile_entities_on_entity_id"
+    t.index ["reporting_profile_id", "entity_id"], name: "idx_myfin_unique_profile_entity", unique: true
+    t.index ["reporting_profile_id"], name: "idx_myfin_profile_entity_profile"
+  end
+
+  create_table "myfin_reporting_profiles", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "family_id", null: false
+    t.boolean "is_default", default: false, null: false
+    t.string "name", null: false
+    t.uuid "preferred_category_scheme_id"
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "name"], name: "index_myfin_reporting_profiles_on_family_id_and_name", unique: true
+    t.index ["family_id"], name: "idx_myfin_one_default_reporting_profile", unique: true, where: "is_default"
+    t.index ["family_id"], name: "index_myfin_reporting_profiles_on_family_id"
+    t.index ["preferred_category_scheme_id"], name: "idx_myfin_profile_preferred_scheme"
+  end
+
+  create_table "myfin_scheme_categories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.uuid "category_scheme_id", null: false
+    t.string "color", default: "#6172F3", null: false
+    t.datetime "created_at", null: false
+    t.string "lucide_icon", default: "shapes", null: false
+    t.string "name", null: false
+    t.uuid "parent_id"
+    t.datetime "updated_at", null: false
+    t.index ["category_scheme_id", "name"], name: "idx_myfin_unique_root_scheme_category", unique: true, where: "(parent_id IS NULL)"
+    t.index ["category_scheme_id", "parent_id", "name"], name: "idx_myfin_unique_child_scheme_category", unique: true, where: "(parent_id IS NOT NULL)"
+    t.index ["category_scheme_id"], name: "idx_myfin_scheme_category_scheme"
+    t.index ["parent_id"], name: "index_myfin_scheme_categories_on_parent_id"
+  end
+
+  create_table "myfin_transaction_classifications", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "category_scheme_id", null: false
+    t.string "classification_source", null: false
+    t.decimal "confidence", precision: 5, scale: 4
+    t.datetime "created_at", null: false
+    t.datetime "reviewed_at"
+    t.uuid "reviewed_by_id"
+    t.uuid "rule_id"
+    t.uuid "scheme_category_id", null: false
+    t.uuid "transaction_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category_scheme_id"], name: "idx_myfin_classification_scheme"
+    t.index ["reviewed_by_id"], name: "index_myfin_transaction_classifications_on_reviewed_by_id"
+    t.index ["scheme_category_id"], name: "idx_myfin_classification_category"
+    t.index ["transaction_id", "category_scheme_id"], name: "idx_myfin_one_classification_per_scheme", unique: true
+    t.index ["transaction_id"], name: "index_myfin_transaction_classifications_on_transaction_id"
+    t.check_constraint "classification_source::text = ANY (ARRAY['imported'::character varying, 'manual'::character varying, 'rule'::character varying, 'model'::character varying]::text[])", name: "chk_myfin_classifications_source"
+    t.check_constraint "confidence IS NULL OR confidence >= 0::numeric AND confidence <= 1::numeric", name: "chk_myfin_classifications_confidence"
+  end
+
   create_table "notification_deliveries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "rule_id", null: false
     t.uuid "transaction_id", null: false
@@ -2400,6 +2513,23 @@ ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
   add_foreign_key "mercury_items", "families"
   add_foreign_key "messages", "chats"
   add_foreign_key "mobile_devices", "users"
+  add_foreign_key "myfin_account_entities", "accounts", on_delete: :cascade
+  add_foreign_key "myfin_account_entities", "myfin_entities", column: "entity_id", on_delete: :cascade
+  add_foreign_key "myfin_category_schemes", "families", on_delete: :cascade
+  add_foreign_key "myfin_category_schemes", "myfin_entities", column: "entity_id", on_delete: :nullify
+  add_foreign_key "myfin_entities", "families", on_delete: :cascade
+  add_foreign_key "myfin_entry_allocations", "entries", on_delete: :cascade
+  add_foreign_key "myfin_entry_allocations", "myfin_entities", column: "entity_id", on_delete: :restrict
+  add_foreign_key "myfin_reporting_profile_entities", "myfin_entities", column: "entity_id", on_delete: :cascade
+  add_foreign_key "myfin_reporting_profile_entities", "myfin_reporting_profiles", column: "reporting_profile_id", on_delete: :cascade
+  add_foreign_key "myfin_reporting_profiles", "families", on_delete: :cascade
+  add_foreign_key "myfin_reporting_profiles", "myfin_category_schemes", column: "preferred_category_scheme_id", on_delete: :nullify
+  add_foreign_key "myfin_scheme_categories", "myfin_category_schemes", column: "category_scheme_id", on_delete: :cascade
+  add_foreign_key "myfin_scheme_categories", "myfin_scheme_categories", column: "parent_id", on_delete: :restrict
+  add_foreign_key "myfin_transaction_classifications", "myfin_category_schemes", column: "category_scheme_id", on_delete: :restrict
+  add_foreign_key "myfin_transaction_classifications", "myfin_scheme_categories", column: "scheme_category_id", on_delete: :restrict
+  add_foreign_key "myfin_transaction_classifications", "transactions", on_delete: :cascade
+  add_foreign_key "myfin_transaction_classifications", "users", column: "reviewed_by_id", on_delete: :nullify
   add_foreign_key "notification_deliveries", "rules", on_delete: :cascade
   add_foreign_key "notification_deliveries", "transactions", on_delete: :cascade
   add_foreign_key "oauth_access_grants", "oauth_applications", column: "application_id"
