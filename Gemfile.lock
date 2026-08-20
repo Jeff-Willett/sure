@@ -629,6 +629,9 @@ GEM
       uber (< 0.2.0)
     retriable (3.4.1)
     rexml (3.4.2)
+    roo (2.10.1)
+      nokogiri (~> 1)
+      rubyzip (>= 1.3.0, < 3.0.0)
     rotp (6.3.0)
     rouge (4.5.2)
     rqrcode (3.1.0)
@@ -930,6 +933,7 @@ DEPENDENCIES
   rchardet
   redcarpet
   redis (~> 5.4)
+  roo (~> 2.10.1)
   rotp (~> 6.3)
   rqrcode (~> 3.0)
   rspec-rails

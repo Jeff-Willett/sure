@@ -87,6 +87,7 @@ gem "rqrcode", "~> 3.0"
 gem "webauthn", "~> 3.4"
 gem "activerecord-import"
 gem "rubyzip", "~> 2.3"
+gem "roo", "~> 2.10.1"
 gem "pdf-reader", "~> 2.12"
 
 # OpenID Connect, OAuth & SAML authentication

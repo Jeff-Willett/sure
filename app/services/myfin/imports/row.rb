@@ -58,7 +58,7 @@ module Myfin
         end
 
         def from_2026_consolidated(sheet:, sheet_row:, date:, posted_at:, name:, merchant:,
-                                   amount:, currency:, pending:, primary_category:,
+                                   amount:, currency:, pending:, channel: nil, primary_category:,
                                    detailed_category:, transaction_id:, account_id:, account_name:)
           validate_account!(sheet)
           validate_currency!(currency)
@@ -91,6 +91,7 @@ module Myfin
               "amount" => amount.to_s,
               "currency" => currency.to_s,
               "pending" => pending.to_s,
+              "channel" => channel.to_s,
               "primary_category" => primary_category.to_s,
               "detailed_category" => detailed_category.to_s,
               "transaction_id" => transaction_id.to_s,
@@ -114,7 +115,8 @@ module Myfin
           end
 
           def parse_date!(value)
-            return value if value.is_a?(Date)
+            return value if value.instance_of?(Date)
+            return value.to_date if value.respond_to?(:to_date) && !value.is_a?(String)
 
             text = required_string!(value, "date")
             format = text.match?(%r{\A\d{1,2}/\d{1,2}/\d{4}\z}) ? "%m/%d/%Y" : "%Y-%m-%d"
@@ -125,6 +127,7 @@ module Myfin
 
           def parse_time(value)
             return if value.blank?
+            return value.in_time_zone if value.respond_to?(:in_time_zone) && !value.is_a?(String)
 
             Time.iso8601(value.to_s)
           rescue ArgumentError
