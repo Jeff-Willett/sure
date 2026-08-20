@@ -79,8 +79,7 @@ module Myfin
             currency: currency.to_s.upcase,
             pending: parse_boolean(pending),
             source_categories: {
-              "Source Provider Primary" => primary_category.to_s.strip.presence,
-              "Source Provider Detailed" => detailed_category.to_s.strip.presence
+              "Source Provider" => detailed_category.to_s.strip.presence || primary_category.to_s.strip.presence
             }.compact.freeze,
             provider_transaction_id: transaction_id.to_s,
             provider_account_id: required_string!(account_id, "account ID"),
