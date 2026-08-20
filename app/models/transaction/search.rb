@@ -16,11 +16,12 @@ class Transaction::Search
   attribute :tags, array: true
   attribute :active_accounts_only, :boolean, default: true
 
-  attr_reader :family, :accessible_account_ids
+  attr_reader :family, :accessible_account_ids, :accessible_entry_ids
 
-  def initialize(family, filters: {}, accessible_account_ids: nil)
+  def initialize(family, filters: {}, accessible_account_ids: nil, accessible_entry_ids: nil)
     @family = family
     @accessible_account_ids = accessible_account_ids
+    @accessible_entry_ids = accessible_entry_ids
     super(filters)
   end
 
@@ -31,6 +32,7 @@ class Transaction::Search
 
       # Scope to accessible accounts when provided (including an empty array, which should yield no results)
       query = query.where(entries: { account_id: accessible_account_ids }) unless accessible_account_ids.nil?
+      query = query.where(entries: { id: accessible_entry_ids }) unless accessible_entry_ids.nil?
 
       query = apply_active_accounts_filter(query, active_accounts_only)
       query = apply_category_filter(query, categories)
@@ -104,12 +106,21 @@ class Transaction::Search
       Digest::SHA256.hexdigest(attributes.sort.to_h.to_json), # cached by filters
       family.entries_cache_version,
       Digest::SHA256.hexdigest(family.tax_advantaged_account_ids.sort.to_json), # stable across processes
-      accessible_account_ids ? Digest::SHA256.hexdigest(accessible_account_ids.sort.to_json) : "all"
+      accessible_account_ids ? Digest::SHA256.hexdigest(accessible_account_ids.sort.to_json) : "all",
+      accessible_entry_ids ? Digest::SHA256.hexdigest(accessible_entry_ids_cache_value) : "all_entries"
     ].join("/")
   end
 
   private
     Totals = Data.define(:count, :income_money, :expense_money, :transfer_inflow_money, :transfer_outflow_money)
+
+    def accessible_entry_ids_cache_value
+      if accessible_entry_ids.respond_to?(:to_sql)
+        accessible_entry_ids.to_sql
+      else
+        Array(accessible_entry_ids).map(&:to_s).sort.to_json
+      end
+    end
 
     def apply_active_accounts_filter(query, active_accounts_only_filter)
       if active_accounts_only_filter

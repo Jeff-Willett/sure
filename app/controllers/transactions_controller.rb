@@ -15,7 +15,22 @@ class TransactionsController < ApplicationController
   def index
     @q = search_params
     @accessible_account_ids = Current.user.accessible_accounts.pluck(:id)
-    @search = Transaction::Search.new(Current.family, filters: @q, accessible_account_ids: @accessible_account_ids)
+    profile_entry_ids = if current_myfin_profile
+      Myfin::ProfileEntriesQuery.call(
+        user: Current.user,
+        profile: current_myfin_profile
+      ).select(:id)
+    end
+    search_options = {
+      filters: @q,
+      accessible_account_ids: @accessible_account_ids
+    }
+    search_options[:accessible_entry_ids] = profile_entry_ids if profile_entry_ids
+
+    @search = Transaction::Search.new(
+      Current.family,
+      **search_options
+    )
 
     base_scope = @search.transactions_scope
                        .reverse_chronological
