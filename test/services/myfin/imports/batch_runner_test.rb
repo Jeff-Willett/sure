@@ -27,6 +27,17 @@ class MyfinImportsBatchRunnerTest < ActiveSupport::TestCase
     assert_equal 2, source_record.entry.transaction.myfin_classifications.count
   end
 
+  test "distinct source rows with identical details create distinct entries" do
+    rows = [ normalized_2025_row, normalized_2025_row(sheet_row: 4) ]
+
+    assert_difference("Entry.count", 2) do
+      batch = run_batch(rows, fingerprint: "identical-rows-v1")
+
+      assert_equal({ "created" => 2 }, batch.counts)
+      assert_equal 2, batch.source_records.where(decision: "created").distinct.count(:entry_id)
+    end
+  end
+
   test "an ambiguous match creates a review item without another entry" do
     first = create_candidate(name: "TAKE 5 CAR WASH")
     second = create_candidate(name: "take 5 car wash")
@@ -91,9 +102,9 @@ class MyfinImportsBatchRunnerTest < ActiveSupport::TestCase
       Myfin::Imports::BatchRunner.call(family: @family, source: source, rows: rows)
     end
 
-    def normalized_2025_row
+    def normalized_2025_row(sheet_row: 3)
       Myfin::Imports::Row.from_2025_wdg(
-        sheet_row: 3,
+        sheet_row: sheet_row,
         date: "5/14/2025",
         description: "TAKE 5 CAR WASH",
         jpw_category: "Gas & Fuel",
