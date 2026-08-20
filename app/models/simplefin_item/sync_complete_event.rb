@@ -6,6 +6,8 @@ class SimplefinItem::SyncCompleteEvent
   end
 
   def broadcast
+    audit_completed_sync
+
     # Update UI with latest account data
     simplefin_item.accounts.each do |account|
       account.broadcast_sync_complete
@@ -22,4 +24,15 @@ class SimplefinItem::SyncCompleteEvent
     # Let family handle sync notifications
     simplefin_item.family.broadcast_sync_complete
   end
+
+  private
+    def audit_completed_sync
+      sync = simplefin_item.latest_completed_sync_record
+      return if sync.nil?
+
+      Myfin::SimplefinSyncAuditor.call(simplefin_item: simplefin_item, sync: sync)
+    rescue StandardError => error
+      Rails.logger.error("SimpleFIN sync audit failed: #{error.class.name}")
+      Sentry.capture_exception(error)
+    end
 end

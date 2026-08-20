@@ -11,13 +11,14 @@ module Myfin
 
       MATCH_WINDOW = 3.days
 
-      def self.call(account:, row:)
-        new(account:, row:).call
+      def self.call(account:, row:, ignore_entry_ids: [])
+        new(account:, row:, ignore_entry_ids: ignore_entry_ids).call
       end
 
-      def initialize(account:, row:)
+      def initialize(account:, row:, ignore_entry_ids: [])
         @account = account
         @row = row
+        @ignore_entry_ids = Array(ignore_entry_ids).compact
       end
 
       def call
@@ -25,7 +26,7 @@ module Myfin
       end
 
       private
-        attr_reader :account, :row
+        attr_reader :account, :row, :ignore_entry_ids
 
         def match_external_identity
           return if row.provider_transaction_id.blank?
@@ -80,7 +81,9 @@ module Myfin
         end
 
         def transaction_entries
-          account.entries.where(entryable_type: "Transaction")
+          scope = account.entries.where(entryable_type: "Transaction")
+          scope = scope.where.not(id: ignore_entry_ids) if ignore_entry_ids.any?
+          scope
         end
 
         def name_matches?(entry)
