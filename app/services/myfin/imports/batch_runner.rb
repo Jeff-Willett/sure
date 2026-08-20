@@ -18,8 +18,8 @@ module Myfin
         @batch = find_or_create_batch!
         return batch if batch.status == "completed"
 
-        @created_entry_ids = batch.source_records
-          .where(decision: "created")
+        @claimed_entry_ids = batch.source_records
+          .where(decision: %w[created matched])
           .where.not(entry_id: nil)
           .pluck(:entry_id)
 
@@ -33,7 +33,7 @@ module Myfin
       end
 
       private
-        attr_reader :family, :source, :rows, :batch, :created_entry_ids
+        attr_reader :family, :source, :rows, :batch, :claimed_entry_ids
 
         def find_or_create_batch!
           family.myfin_import_batches.find_or_create_by!(
@@ -53,15 +53,16 @@ module Myfin
           reconciliation = Reconciler.call(
             account: account,
             row: row,
-            ignore_entry_ids: created_entry_ids
+            ignore_entry_ids: claimed_entry_ids
           )
           source_record = EntryWriter.call(
             batch: batch,
             account: account,
             row: row,
-            reconciliation: reconciliation
+            reconciliation: reconciliation,
+            force_create: reconciliation.decision == "create"
           )
-          created_entry_ids << source_record.entry_id if source_record.decision == "created"
+          claimed_entry_ids << source_record.entry_id if source_record.entry_id.present?
           increment_count!(source_record.decision)
         rescue UnknownAccount
           write_account_review!(row, "unknown_account")

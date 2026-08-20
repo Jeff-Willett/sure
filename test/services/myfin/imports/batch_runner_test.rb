@@ -38,6 +38,19 @@ class MyfinImportsBatchRunnerTest < ActiveSupport::TestCase
     end
   end
 
+  test "an existing entry can be claimed by only one source row in a batch" do
+    existing_entry = create_candidate(name: "TAKE 5 CAR WASH")
+    rows = [ normalized_2025_row, normalized_2025_row(sheet_row: 4) ]
+
+    assert_difference("Entry.count", 1) do
+      batch = run_batch(rows, fingerprint: "one-claim-per-entry-v1")
+
+      assert_equal({ "matched" => 1, "created" => 1 }, batch.counts)
+      assert_equal 2, batch.source_records.distinct.count(:entry_id)
+      assert_equal 1, batch.source_records.where(entry: existing_entry).count
+    end
+  end
+
   test "an ambiguous match creates a review item without another entry" do
     first = create_candidate(name: "TAKE 5 CAR WASH")
     second = create_candidate(name: "take 5 car wash")
