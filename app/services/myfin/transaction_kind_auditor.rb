@@ -36,6 +36,7 @@ module Myfin
           .where(accounts: { family_id: family.id, accountable_type: "CreditCard" })
           .where("entries.amount < 0")
           .where(transactions: { kind: "cc_payment", transfer_id: nil })
+          .where.not("entries.name ~* ?", "^(automatic payment|automatic credit card payment|credit card payment|automatic payment - thank)$")
       end
   end
 end

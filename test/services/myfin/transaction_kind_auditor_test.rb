@@ -9,6 +9,7 @@ class MyfinTransactionKindAuditorTest < ActiveSupport::TestCase
 
   test "dry run identifies only unsupported credit card payments" do
     refund = import(@credit_card, amount: -49.21, name: "Walmart refund", kind: "cc_payment")
+    card_payment = import(@credit_card, amount: -500, name: "Automatic Credit Card Payment", kind: "cc_payment")
     payment = import(@checking, amount: 500, name: "Card autopay", kind: "cc_payment")
 
     result = Myfin::TransactionKindAuditor.call(family: @family)
@@ -17,6 +18,7 @@ class MyfinTransactionKindAuditorTest < ActiveSupport::TestCase
     assert_equal 1, result.candidate_count
     assert_equal 0, result.repaired_count
     assert_equal "cc_payment", refund.transaction.reload.kind
+    assert_equal "cc_payment", card_payment.transaction.reload.kind
     assert_equal "cc_payment", payment.transaction.reload.kind
   end
 
