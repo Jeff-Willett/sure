@@ -22,7 +22,12 @@ module Myfin
       end
 
       def call
-        match_external_identity || match_exact_details || match_nearby_merchant || review_weak_candidates || create_result
+        match_external_identity ||
+          match_exact_details ||
+          match_exact_amount_and_date ||
+          match_nearby_merchant ||
+          review_weak_candidates ||
+          create_result
       end
 
       private
@@ -50,6 +55,14 @@ module Myfin
             .select { |entry| name_matches?(entry) }
 
           resolve(candidates, method: "exact_details", confidence: BigDecimal("0.98"))
+        end
+
+        def match_exact_amount_and_date
+          candidates = amount_and_currency_scope
+            .where(date: row.reporting_date)
+            .to_a
+
+          resolve(candidates, method: "exact_amount_date", confidence: BigDecimal("0.90"))
         end
 
         def match_nearby_merchant

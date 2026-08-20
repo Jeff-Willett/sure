@@ -67,15 +67,30 @@ class MyfinImportsReconcilerTest < ActiveSupport::TestCase
     end
   end
 
-  test "returns review for a same amount nearby transaction with a different name" do
+  test "matches a unique same date amount and currency when provider names differ" do
     candidate = create_entry(name: "Different merchant")
 
     assert_read_only do
       result = Myfin::Imports::Reconciler.call(account: @account, row: build_row)
 
-      assert_equal "review", result.decision
-      assert_equal "weak_candidate", result.match_method
+      assert_equal "matched", result.decision
+      assert_equal "exact_amount_date", result.match_method
+      assert_equal BigDecimal("0.90"), result.confidence
+      assert_equal candidate, result.entry
       assert_equal [ candidate.id ], result.candidate_entry_ids
+    end
+  end
+
+  test "returns review when same date amount and currency has multiple candidates" do
+    first = create_entry(name: "First merchant")
+    second = create_entry(name: "Second merchant")
+
+    assert_read_only do
+      result = Myfin::Imports::Reconciler.call(account: @account, row: build_row)
+
+      assert_equal "review", result.decision
+      assert_equal "exact_amount_date", result.match_method
+      assert_equal [ first.id, second.id ].sort, result.candidate_entry_ids.sort
     end
   end
 
