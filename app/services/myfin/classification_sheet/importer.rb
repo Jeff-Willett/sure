@@ -110,8 +110,8 @@ module Myfin
               "entry_id" => entry.id.to_s,
               "wdg" => wdg,
               "jpw" => jpw,
-              "wdg_changed" => current.fetch("WDG") != wdg,
-              "jpw_changed" => current.fetch("JPW") != jpw
+              "wdg_changed" => current["WDG"] != wdg,
+              "jpw_changed" => current["JPW"] != jpw
             }
           end
 
