@@ -420,7 +420,7 @@ Run:
 rg -n "TransactionExplorerQuery" app test
 ```
 
-Expected before deletion: controller and old test references only.
+Expected before deletion: the old module definition and old test references only. The controller must already use `Myfin::TransactionExplorer::Report` from Task 4.
 
 - [ ] **Step 2: Move unique old tests to Report tests**
 
