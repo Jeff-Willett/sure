@@ -21,6 +21,7 @@ en:
       shared_set: "%{count} transactions in this view"
       rollup_title: "Rollup"
       rollup_help: "WDG / JPW"
+      resize_rollup: "Resize rollup panel"
       ledger_title: "Transactions"
       showing: "Showing %{shown} of %{total}"
       empty: "No transactions match these slicers."

@@ -18,8 +18,20 @@
 
   <%= render "metrics", metrics: @report.metrics %>
 
-  <div class="grid items-start rounded-xl border border-secondary bg-container @3xl:grid-cols-[minmax(260px,0.32fr)_minmax(0,1fr)]">
+  <div
+    class="grid items-start rounded-xl border border-secondary bg-container @3xl:grid-cols-[var(--transaction-explorer-rollup-width,32%)_0.5rem_minmax(0,1fr)]"
+    data-controller="transaction-explorer-split">
     <%= render "rollup", rollup: @report.rollup %>
+    <div
+      class="group relative hidden h-full cursor-col-resize bg-container @3xl:block"
+      role="separator"
+      tabindex="0"
+      aria-label="<%= t("myfin.transaction_explorer.resize_rollup") %>"
+      aria-orientation="vertical"
+      data-transaction-explorer-split-target="handle"
+      data-action="pointerdown->transaction-explorer-split#start keydown->transaction-explorer-split#keydown dblclick->transaction-explorer-split#reset">
+      <span class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-secondary transition-colors group-hover:bg-info group-focus-visible:bg-info motion-reduce:transition-none"></span>
+    </div>
     <%= render "ledger", rows: @visible_rows, total_count: @report.rows.size %>
   </div>
 </div>
