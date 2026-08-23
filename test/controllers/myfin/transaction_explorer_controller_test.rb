@@ -52,6 +52,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-testid='transaction-explorer-shared-set'][data-ledger-count='1'][data-rollup-count='1']"
     assert_select "[data-controller~='transaction-explorer-split']", count: 1
     assert_select "[role='separator'][aria-label='Resize rollup panel']", count: 1
+    assert_select "[role='separator'][aria-label='Resize the assistant sidebar'] span.bg-secondary", count: 1
     assert_select "section", text: /Transactions\s+1\s+Expenses\s+\$120\.00\s+Income\s+\$0\.00\s+Transfer net\s+\$0\.00/
     assert_select "section", text: /Expense\s+\$120\.00.*Shopping\s+\$120\.00.*Groceries\s+\$120\.00/m
     assert_select "span[aria-hidden='true']", text: "🛍️", minimum: 1

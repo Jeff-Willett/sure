@@ -14,5 +14,5 @@
     action: "pointerdown->sidebar-resize#start#{suffix} keydown->sidebar-resize#key#{suffix} dblclick->sidebar-resize#reset#{suffix}"
   }
 ) do %>
-  <span class="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-transparent transition-colors group-hover:bg-loader group-focus-visible:bg-loader"></span>
+  <span class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-secondary transition-colors group-hover:bg-info group-focus-visible:bg-info motion-reduce:transition-none"></span>
 <% end %>

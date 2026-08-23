@@ -1,12 +1,12 @@
 <% content_for :hide_myfin_profile_selector, true %>
 
-<div class="@container space-y-3 pb-8">
+<div class="@container pb-8 lg:-mx-10">
   <h1 class="sr-only"><%= t("myfin.transaction_explorer.title") %></h1>
 
   <%= render "filters", report: @report %>
 
   <div
-    class="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 py-0.5 text-xs text-secondary"
+    class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-secondary bg-surface px-4 py-2.5 text-xs text-secondary"
     data-testid="transaction-explorer-shared-set"
     data-ledger-count="<%= @report.rows.size %>"
     data-rollup-count="<%= @report.rows.size %>">
@@ -19,7 +19,7 @@
   <%= render "metrics", metrics: @report.metrics %>
 
   <div
-    class="grid items-start rounded-xl border border-secondary bg-container @3xl:grid-cols-[var(--transaction-explorer-rollup-width,32%)_0.5rem_minmax(0,1fr)]"
+    class="grid items-start border-b border-secondary bg-container @3xl:grid-cols-[var(--transaction-explorer-rollup-width,32%)_0.5rem_minmax(0,1fr)]"
     data-controller="transaction-explorer-split">
     <%= render "rollup", rollup: @report.rollup %>
     <div
