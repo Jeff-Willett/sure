@@ -29,22 +29,23 @@
           options: filter_options.types.map { |type| [ type, type ] },
           selected: selected_filters[:types] %>
 
-    <div class="flex min-w-48 flex-col justify-center gap-2 bg-container px-3 py-3 sm:col-span-2 @6xl:col-span-1">
+    <div class="flex min-w-48 items-center gap-2 bg-container px-3 py-2 sm:col-span-2 @6xl:col-span-1">
       <%= render DS::SearchInput.new(
             name: :search,
             value: params[:search],
             placeholder: t("myfin.transaction_explorer.filters.search"),
             aria_label: t("myfin.transaction_explorer.filters.search"),
+            class: "min-w-0 flex-1",
             data: { auto_submit_form_target: "auto" }
           ) %>
       <%= link_to t("myfin.transaction_explorer.filters.reset"),
             myfin_transaction_explorer_path,
-            class: "self-end rounded-md px-1.5 py-0.5 text-xs font-medium text-secondary transition-colors hover:bg-surface-hover hover:text-primary focus-ring motion-reduce:transition-none" %>
+            class: "shrink-0 rounded-md px-1.5 py-1 text-xs font-medium text-secondary transition-colors hover:bg-surface-hover hover:text-primary focus-ring motion-reduce:transition-none" %>
     </div>
   </div>
 
   <details class="group border-t border-secondary bg-container-inset">
-    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm font-medium text-secondary transition-colors hover:bg-container-inset-hover hover:text-primary focus-ring motion-reduce:transition-none">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2 text-xs font-medium text-secondary transition-colors hover:bg-container-inset-hover hover:text-primary focus-ring motion-reduce:transition-none">
       <span class="inline-flex items-center gap-2">
         <%= icon("sliders-horizontal", size: "sm") %>
         <%= t("myfin.transaction_explorer.filters.more") %>
@@ -56,12 +57,14 @@
             label: t("myfin.transaction_explorer.filters.wdg"),
             key: :wdg_categories,
             options: filter_options.wdg_categories.map { |category| [ category, category ] },
-            selected: selected_filters[:wdg_categories] %>
+            selected: selected_filters[:wdg_categories],
+            inline: true %>
       <%= render "slicer",
             label: t("myfin.transaction_explorer.filters.jpw"),
             key: :jpw_categories,
             options: filter_options.jpw_categories.map { |category| [ category, category ] },
-            selected: selected_filters[:jpw_categories] %>
+            selected: selected_filters[:jpw_categories],
+            inline: true %>
     </div>
   </details>
 <% end %>
