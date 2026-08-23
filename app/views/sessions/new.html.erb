@@ -48,6 +48,22 @@
   <% end %>
 <% end %>
 
+<% if Rails.env.test? && ActiveModel::Type::Boolean.new.cast(ENV["TRANSACTION_EXPLORER_PREVIEW_LOGIN"]) %>
+  <div class="mt-6 rounded-lg border border-secondary bg-container-inset p-3">
+    <p class="mb-3 text-center text-xs text-secondary"><%= t(".preview_login_help") %></p>
+    <%= render DS::Button.new(
+          href: preview_session_path,
+          method: :post,
+          variant: :outline,
+          size: :md,
+          full_width: true,
+          icon: "scan-eye",
+          text: t(".preview_login"),
+          form: { data: { turbo: false } }
+        ) %>
+  </div>
+<% end %>
+
 <% providers = AuthConfig.sso_providers %>
 
 <% if providers.any? %>

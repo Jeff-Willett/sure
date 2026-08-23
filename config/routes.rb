@@ -2,6 +2,8 @@ require "sidekiq/web"
 require "sidekiq/cron/web"
 
 Rails.application.routes.draw do
+  resource :preview_session, only: :create if Rails.env.test?
+
   namespace :myfin do
     resource :reporting_profile, only: :update
     resource :transaction_explorer, only: :show
