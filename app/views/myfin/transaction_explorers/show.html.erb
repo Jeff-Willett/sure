@@ -1,16 +1,7 @@
 <% content_for :hide_myfin_profile_selector, true %>
 
-<% content_for :page_header do %>
-  <div class="mb-5 space-y-1">
-    <h1 class="text-xl font-medium text-primary lg:text-3xl"><%= t("myfin.transaction_explorer.title") %></h1>
-    <p class="text-sm text-secondary lg:text-base"><%= t("myfin.transaction_explorer.subtitle") %></p>
-  </div>
-<% end %>
-
 <div class="@container space-y-4 pb-8">
-  <div class="rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning">
-    <%= t("myfin.transaction_explorer.prototype_note") %>
-  </div>
+  <h1 class="sr-only"><%= t("myfin.transaction_explorer.title") %></h1>
 
   <%= form_with url: myfin_transaction_explorer_path,
         method: :get,

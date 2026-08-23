@@ -37,7 +37,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     }
 
     assert_response :success
-    assert_select "h1", text: "Transaction Explorer"
+    assert_select "h1.sr-only", text: "Transaction Explorer"
+    assert_select "main", text: /Working frame/, count: 0
     assert_select "input[name='entity_ids[]'][value='#{@personal.id}']", checked: "checked"
     assert_select "input[name='entity_ids[]'][value='#{@gci.id}']", count: 1
     assert_select "[data-testid='transaction-explorer-shared-set'][data-ledger-count='1'][data-rollup-count='1']"

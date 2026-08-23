@@ -4,8 +4,6 @@ en:
       selector_label: "Reporting profile: %{profile}"
     transaction_explorer:
       title: "Transaction Explorer"
-      subtitle: "Use one shared set of slicers to drive the rollup and transaction ledger."
-      prototype_note: "Working frame. Read-only and not yet optimized for large histories."
       filters:
         entities: "Entity"
         years: "Year"
