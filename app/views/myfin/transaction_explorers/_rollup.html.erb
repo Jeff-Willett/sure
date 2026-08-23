@@ -12,10 +12,16 @@
     <% end %>
 
     <% rollup.each do |type| %>
+      <% tone_classes = case type.type
+         when "Expense" then [ "bg-red-tint-10 text-destructive", "text-destructive" ]
+         when "Income" then [ "bg-green-tint-10 text-success", "text-success" ]
+         when "Transfer" then [ "bg-blue-tint-10 text-info", "text-info" ]
+         else [ "bg-container-inset text-primary", "text-primary" ]
+         end %>
       <section>
         <div class="flex items-center justify-between px-1 pb-1.5 text-sm font-semibold text-primary">
-          <span><%= type.type %></span>
-          <span class="tabular-nums"><%= format_money(Money.new(type.amount.abs, Current.family.currency)) %></span>
+          <span class="inline-flex min-h-7 items-center rounded-md px-2 py-1 text-xs font-semibold <%= tone_classes.first %>"><%= type.type %></span>
+          <span class="tabular-nums <%= tone_classes.last %>"><%= format_money(Money.new(type.amount.abs, Current.family.currency)) %></span>
         </div>
         <div class="space-y-1">
           <% type.groups.each do |group| %>
