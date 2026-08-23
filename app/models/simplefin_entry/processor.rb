@@ -40,6 +40,7 @@ class SimplefinEntry::Processor
       date: date,
       name: name,
       source: "simplefin",
+      kind: inferred_kind,
       merchant: merchant,
       notes: notes,
       extra: extra_metadata
@@ -105,6 +106,28 @@ class SimplefinEntry::Processor
 
     def account
       simplefin_account.current_account
+    end
+
+    # SimpleFIN does not provide a reliable kind for these recurring personal
+    # transfers. Keep Pershing funding out of income, while treating the
+    # scheduled savings-to-checking payment as income for the user's budget.
+    def inferred_kind
+      return "funds_movement" if pershing_savings_deposit?
+      return "standard" if scheduled_savings_to_checking_income?
+
+      nil
+    end
+
+    def pershing_savings_deposit?
+      account.name.to_s.match?(/savings/i) &&
+        name.match?(/pershing/i) &&
+        amount.negative?
+    end
+
+    def scheduled_savings_to_checking_income?
+      account.name.to_s.match?(/checking/i) &&
+        name.match?(/\b(?:savings?|sav)\b/i) &&
+        amount == -3000
     end
 
     def data

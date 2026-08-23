@@ -53,6 +53,43 @@ class SimplefinEntry::ProcessorTest < ActiveSupport::TestCase
     assert_equal "Order #1234", sf["description"]
     assert_equal({ "category" => "restaurants", "check_number" => nil }, sf["extra"])
   end
+
+  test "marks Pershing deposits into savings as funds movement" do
+    @simplefin_account.update!(name: "CHASE SAVINGS (5387)")
+    tx = {
+      id: "tx_pershing_savings_1",
+      amount: "22000.00",
+      currency: "USD",
+      payee: "Pershing",
+      description: "Brokerage transfer",
+      posted: Date.current.to_s,
+      transacted_at: Date.current.to_s
+    }
+
+    SimplefinEntry::Processor.new(tx, simplefin_account: @simplefin_account).process
+
+    entry = @account.entries.find_by!(external_id: "simplefin_tx_pershing_savings_1", source: "simplefin")
+    assert_equal "funds_movement", entry.transaction.kind
+  end
+
+  test "marks scheduled savings to checking deposits as standard income" do
+    @simplefin_account.update!(name: "TOTAL CHECKING (6626)")
+    tx = {
+      id: "tx_savings_checking_income_1",
+      amount: "3000.00",
+      currency: "USD",
+      payee: "Transfer from Savings",
+      description: "",
+      posted: Date.current.to_s,
+      transacted_at: Date.current.to_s
+    }
+
+    SimplefinEntry::Processor.new(tx, simplefin_account: @simplefin_account).process
+
+    entry = @account.entries.find_by!(external_id: "simplefin_tx_savings_checking_income_1", source: "simplefin")
+    assert_equal "standard", entry.transaction.kind
+  end
+
   test "does not flag pending when posted is nil but provider pending flag not set" do
     # Previously we inferred pending from missing posted date, but this was too aggressive -
     # some providers don't supply posted dates even for settled transactions
