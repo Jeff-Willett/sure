@@ -1,0 +1,61 @@
+<%# locals: (report:) %>
+
+<% filter_options = report.filter_options %>
+<% selected_filters = report.selected_filters %>
+
+<%= form_with url: myfin_transaction_explorer_path,
+      method: :get,
+      data: { controller: "auto-submit-form" },
+      class: "space-y-3 rounded-xl bg-container p-3 shadow-border-xs" do %>
+  <div class="grid gap-3 @3xl:grid-cols-2 @6xl:grid-cols-[1.1fr_0.7fr_1fr_1fr_auto]">
+    <%= render "slicer",
+          label: t("myfin.transaction_explorer.filters.entities"),
+          key: :entity_ids,
+          options: filter_options.entities,
+          selected: selected_filters[:entity_ids] %>
+    <%= render "slicer",
+          label: t("myfin.transaction_explorer.filters.years"),
+          key: :years,
+          options: filter_options.years.map { |year| [ year, year ] },
+          selected: selected_filters[:years] %>
+    <%= render "slicer",
+          label: t("myfin.transaction_explorer.filters.months"),
+          key: :months,
+          options: filter_options.months.map { |month| [ month, Date::ABBR_MONTHNAMES.fetch(month) ] },
+          selected: selected_filters[:months] %>
+    <%= render "slicer",
+          label: t("myfin.transaction_explorer.filters.types"),
+          key: :types,
+          options: filter_options.types.map { |type| [ type, type ] },
+          selected: selected_filters[:types] %>
+
+    <div class="flex min-w-48 flex-col justify-center gap-2">
+      <%= search_field_tag :search,
+            params[:search],
+            placeholder: t("myfin.transaction_explorer.filters.search"),
+            aria: { label: t("myfin.transaction_explorer.filters.search") },
+            autocomplete: "off",
+            class: "min-h-9 w-full rounded-lg border border-primary bg-container px-3 py-2 text-sm text-primary placeholder:text-secondary",
+            data: { auto_submit_form_target: "auto" } %>
+      <%= link_to t("myfin.transaction_explorer.filters.reset"),
+            myfin_transaction_explorer_path,
+            class: "text-center text-xs font-medium text-secondary hover:text-primary" %>
+    </div>
+  </div>
+
+  <details class="rounded-lg border border-secondary bg-container px-3 py-2">
+    <summary class="cursor-pointer text-sm font-medium text-secondary"><%= t("myfin.transaction_explorer.filters.more") %></summary>
+    <div class="mt-3 grid gap-3 @4xl:grid-cols-2">
+      <%= render "slicer",
+            label: t("myfin.transaction_explorer.filters.wdg"),
+            key: :wdg_categories,
+            options: filter_options.wdg_categories.map { |category| [ category, category ] },
+            selected: selected_filters[:wdg_categories] %>
+      <%= render "slicer",
+            label: t("myfin.transaction_explorer.filters.jpw"),
+            key: :jpw_categories,
+            options: filter_options.jpw_categories.map { |category| [ category, category ] },
+            selected: selected_filters[:jpw_categories] %>
+    </div>
+  </details>
+<% end %>

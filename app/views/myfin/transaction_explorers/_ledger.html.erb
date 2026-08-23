@@ -1,0 +1,52 @@
+<%# locals: (rows:, total_count:) %>
+
+<section class="min-w-0 rounded-xl bg-container shadow-border-xs">
+  <header class="flex items-center justify-between border-b border-secondary px-4 py-3">
+    <h2 class="font-medium text-primary"><%= t("myfin.transaction_explorer.ledger_title") %></h2>
+    <span class="text-xs text-secondary"><%= t("myfin.transaction_explorer.showing", shown: rows.size, total: total_count) %></span>
+  </header>
+
+  <% if rows.empty? %>
+    <p class="py-12 text-center text-sm text-secondary"><%= t("myfin.transaction_explorer.empty") %></p>
+  <% else %>
+    <div class="max-h-[calc(100vh-10rem)] overflow-auto">
+      <table class="w-full min-w-[900px] text-sm">
+        <thead class="sticky top-0 z-10 bg-container-inset text-left text-xs text-secondary">
+          <tr>
+            <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.date") %></th>
+            <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.entity") %></th>
+            <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.wdg") %></th>
+            <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.jpw") %></th>
+            <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.description") %></th>
+            <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.account") %></th>
+            <th class="px-3 py-2 text-right font-medium"><%= t("myfin.transaction_explorer.columns.amount") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.each do |row| %>
+            <tr class="border-b border-tertiary hover:bg-surface-hover" data-entry-id="<%= row.entry_id %>">
+              <td class="whitespace-nowrap px-3 py-2 text-secondary"><%= l(row.date, format: :short) %></td>
+              <td class="px-3 py-2">
+                <div class="flex flex-wrap gap-1">
+                  <% row.entity_names.each do |entity_name| %>
+                    <span class="rounded-full bg-container-inset px-2 py-0.5 text-xs text-secondary"><%= entity_name %></span>
+                  <% end %>
+                </div>
+              </td>
+              <td class="px-3 py-2 text-primary"><%= row.wdg %></td>
+              <td class="px-3 py-2 text-primary"><%= row.jpw %></td>
+              <td class="min-w-56 px-3 py-2 text-primary">
+                <%= row.description %>
+                <span class="mt-0.5 block text-xs text-secondary"><%= row.type %></span>
+              </td>
+              <td class="px-3 py-2 text-secondary"><%= row.account_name %></td>
+              <td class="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums <%= row.amount.negative? ? "text-destructive" : "text-success" %>">
+                <%= format_money(Money.new(row.amount, Current.family.currency)) %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</section>
