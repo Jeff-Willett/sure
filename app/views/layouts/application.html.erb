@@ -10,6 +10,7 @@ else
     { name: t(".nav.home"), path: root_path, icon: "pie-chart", icon_custom: false, active: page_active?(root_path) },
     { name: t(".nav.transactions"), path: transactions_path, icon: "credit-card", icon_custom: false, active: page_active?(transactions_path) },
     { name: t(".nav.reports"), path: reports_path, icon: "chart-bar", icon_custom: false, active: page_active?(reports_path) },
+    { name: t(".nav.transaction_explorer", default: "Explorer"), path: myfin_transaction_explorer_path, icon: "list-filter", icon_custom: false, active: page_active?(myfin_transaction_explorer_path) },
     { name: t(".nav.budgets"), path: budgets_path, icon: "map", icon_custom: false, active: page_active?(budgets_path) },
     preview_gated_nav_item({ name: t(".nav.goals"), path: goals_path, icon: "piggy-bank", icon_custom: false, active: page_active?(goals_path) }),
     { name: t(".nav.assistant"), path: chats_path, icon: "icon-assistant", icon_custom: true, active: page_active?(chats_path), mobile_only: true }
@@ -151,7 +152,7 @@ end %>
           <div class="flex items-center gap-2">
             <%= icon("panel-left", as_button: true, data: { action: "app-layout#toggleLeftSidebar" }) %>
 
-            <% if current_myfin_profile %>
+            <% if current_myfin_profile && !content_for?(:hide_myfin_profile_selector) %>
               <%= render Myfin::ReportingProfileSelector.new(
                 current_profile: current_myfin_profile,
                 profiles: Current.family.myfin_reporting_profiles.order(:name)

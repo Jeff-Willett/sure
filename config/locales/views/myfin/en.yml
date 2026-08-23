@@ -2,6 +2,39 @@ en:
   myfin:
     reporting_profiles:
       selector_label: "Reporting profile: %{profile}"
+    transaction_explorer:
+      title: "Transaction Explorer"
+      subtitle: "Use one shared set of slicers to drive the rollup and transaction ledger."
+      prototype_note: "Working frame. Read-only and not yet optimized for large histories."
+      filters:
+        entities: "Entity"
+        years: "Year"
+        months: "Month"
+        types: "Type"
+        wdg: "WDG category"
+        jpw: "JPW category"
+        search: "Search transactions"
+        more: "WDG and JPW categories"
+        reset: "Reset filters"
+      shared_set: "%{count} filtered transactions feed both panels"
+      rollup_title: "Rollup"
+      rollup_help: "Type, then WDG, then JPW"
+      ledger_title: "Transactions"
+      showing: "Showing %{shown} of %{total}"
+      empty: "No transactions match these slicers."
+      metrics:
+        transactions: "Transactions"
+        expenses: "Expenses"
+        income: "Income"
+        transfer_net: "Transfer net"
+      columns:
+        date: "Date"
+        entity: "Entity"
+        wdg: "WDG"
+        jpw: "JPW"
+        description: "Description"
+        account: "Account"
+        amount: "Amount"
     transaction_dimensions:
       title: "MyFIN dimensions"
     entry_allocations:

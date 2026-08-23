@@ -1,0 +1,195 @@
+<% content_for :hide_myfin_profile_selector, true %>
+
+<% content_for :page_header do %>
+  <div class="mb-5 space-y-1">
+    <h1 class="text-xl font-medium text-primary lg:text-3xl"><%= t("myfin.transaction_explorer.title") %></h1>
+    <p class="text-sm text-secondary lg:text-base"><%= t("myfin.transaction_explorer.subtitle") %></p>
+  </div>
+<% end %>
+
+<div class="@container space-y-4 pb-8">
+  <div class="rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning">
+    <%= t("myfin.transaction_explorer.prototype_note") %>
+  </div>
+
+  <%= form_with url: myfin_transaction_explorer_path,
+        method: :get,
+        data: { controller: "auto-submit-form" },
+        class: "space-y-3 rounded-xl bg-container p-3 shadow-border-xs" do %>
+    <div class="grid gap-3 @3xl:grid-cols-2 @6xl:grid-cols-[1.1fr_0.7fr_1fr_1fr_auto]">
+      <%= render "slicer",
+            label: t("myfin.transaction_explorer.filters.entities"),
+            key: :entity_ids,
+            options: @filter_options.entities,
+            selected: @selected_filters[:entity_ids] %>
+      <%= render "slicer",
+            label: t("myfin.transaction_explorer.filters.years"),
+            key: :years,
+            options: @filter_options.years.map { |year| [ year, year ] },
+            selected: @selected_filters[:years] %>
+      <%= render "slicer",
+            label: t("myfin.transaction_explorer.filters.months"),
+            key: :months,
+            options: @filter_options.months.map { |month| [ month, Date::ABBR_MONTHNAMES.fetch(month) ] },
+            selected: @selected_filters[:months] %>
+      <%= render "slicer",
+            label: t("myfin.transaction_explorer.filters.types"),
+            key: :types,
+            options: @filter_options.types.map { |type| [ type, type ] },
+            selected: @selected_filters[:types] %>
+
+      <div class="flex min-w-48 flex-col justify-center gap-2">
+        <%= search_field_tag :search,
+              params[:search],
+              placeholder: t("myfin.transaction_explorer.filters.search"),
+              aria: { label: t("myfin.transaction_explorer.filters.search") },
+              autocomplete: "off",
+              class: "min-h-9 w-full rounded-lg border border-primary bg-container px-3 py-2 text-sm text-primary placeholder:text-secondary",
+              data: { auto_submit_form_target: "auto" } %>
+        <%= link_to t("myfin.transaction_explorer.filters.reset"),
+              myfin_transaction_explorer_path,
+              class: "text-center text-xs font-medium text-secondary hover:text-primary" %>
+      </div>
+    </div>
+
+    <details class="rounded-lg border border-secondary bg-container px-3 py-2">
+      <summary class="cursor-pointer text-sm font-medium text-secondary"><%= t("myfin.transaction_explorer.filters.more") %></summary>
+      <div class="mt-3 grid gap-3 @4xl:grid-cols-2">
+        <%= render "slicer",
+              label: t("myfin.transaction_explorer.filters.wdg"),
+              key: :wdg_categories,
+              options: @filter_options.wdg_categories.map { |category| [ category, category ] },
+              selected: @selected_filters[:wdg_categories] %>
+        <%= render "slicer",
+              label: t("myfin.transaction_explorer.filters.jpw"),
+              key: :jpw_categories,
+              options: @filter_options.jpw_categories.map { |category| [ category, category ] },
+              selected: @selected_filters[:jpw_categories] %>
+      </div>
+    </details>
+  <% end %>
+
+  <div
+    class="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-secondary bg-container-inset px-3 py-2 text-xs text-secondary"
+    data-testid="transaction-explorer-shared-set"
+    data-ledger-count="<%= @rows.size %>"
+    data-rollup-count="<%= @rows.size %>">
+    <span class="inline-flex h-2 w-2 rounded-full bg-success"></span>
+    <strong class="text-primary"><%= t("myfin.transaction_explorer.shared_set", count: @rows.size) %></strong>
+    <span>Rollup: <%= @rows.size %></span>
+    <span>Ledger: <%= @rows.size %></span>
+  </div>
+
+  <section class="flex flex-wrap divide-x divide-secondary rounded-xl bg-container py-3 shadow-border-xs">
+    <% [
+      [ :transactions, @metrics[:transactions], nil ],
+      [ :expenses, @metrics[:expenses], "text-destructive" ],
+      [ :income, @metrics[:income], "text-success" ],
+      [ :transfer_net, @metrics[:transfer_net], "text-info" ]
+    ].each do |key, value, color_class| %>
+      <div class="min-w-40 flex-1 px-4 py-1">
+        <p class="text-xs text-secondary"><%= t("myfin.transaction_explorer.metrics.#{key}") %></p>
+        <p class="mt-1 text-lg font-medium tabular-nums <%= color_class %>">
+          <%= key == :transactions ? value : format_money(Money.new(value, Current.family.currency)) %>
+        </p>
+      </div>
+    <% end %>
+  </section>
+
+  <div class="grid items-start gap-4 @3xl:grid-cols-[minmax(260px,0.34fr)_minmax(0,1fr)]">
+    <section class="rounded-xl bg-container shadow-border-xs @3xl:sticky @3xl:top-24 @3xl:max-h-[calc(100vh-7rem)] @3xl:overflow-y-auto">
+      <header class="flex items-center justify-between border-b border-secondary px-4 py-3">
+        <h2 class="font-medium text-primary"><%= t("myfin.transaction_explorer.rollup_title") %></h2>
+        <span class="text-xs text-secondary"><%= t("myfin.transaction_explorer.rollup_help") %></span>
+      </header>
+
+      <div class="space-y-4 p-4">
+        <% if @rollup_by_type.empty? %>
+          <p class="py-8 text-center text-sm text-secondary"><%= t("myfin.transaction_explorer.empty") %></p>
+        <% end %>
+
+        <% %w[Expense Income Transfer].each do |type| %>
+          <% type_rows = @rollup_by_type[type] %>
+          <% next if type_rows.blank? %>
+          <% type_total = type_rows.sum(BigDecimal("0"), &:amount) %>
+          <section>
+            <div class="flex items-center justify-between border-b-2 border-primary pb-2 font-medium text-primary">
+              <span><%= type %></span>
+              <span class="tabular-nums"><%= format_money(Money.new(type_total.abs, Current.family.currency)) %></span>
+            </div>
+            <div class="mt-2 space-y-2">
+              <% type_rows.group_by(&:wdg).sort_by { |_wdg, rows| -rows.sum(BigDecimal("0")) { |row| row.amount.abs } }.each do |wdg, wdg_rows| %>
+                <% wdg_total = wdg_rows.sum(BigDecimal("0"), &:amount) %>
+                <div>
+                  <%= link_to myfin_transaction_explorer_path(request.query_parameters.merge(wdg_categories: [ wdg ])),
+                        class: "flex items-start justify-between gap-3 rounded-md bg-container-inset px-2.5 py-2 text-sm font-medium text-primary hover:bg-container-inset-hover" do %>
+                    <span><%= wdg %></span>
+                    <span class="tabular-nums"><%= format_money(Money.new(wdg_total.abs, Current.family.currency)) %></span>
+                  <% end %>
+                  <% wdg_rows.each do |row| %>
+                    <%= link_to myfin_transaction_explorer_path(request.query_parameters.merge(jpw_categories: [ row.jpw ])),
+                          class: "flex items-start justify-between gap-3 border-b border-tertiary px-3 py-1.5 text-xs text-secondary hover:bg-surface-hover hover:text-primary" do %>
+                      <span><%= row.jpw %></span>
+                      <span class="tabular-nums"><%= format_money(Money.new(row.amount.abs, Current.family.currency)) %></span>
+                    <% end %>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </section>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="min-w-0 rounded-xl bg-container shadow-border-xs">
+      <header class="flex items-center justify-between border-b border-secondary px-4 py-3">
+        <h2 class="font-medium text-primary"><%= t("myfin.transaction_explorer.ledger_title") %></h2>
+        <span class="text-xs text-secondary"><%= t("myfin.transaction_explorer.showing", shown: @visible_rows.size, total: @rows.size) %></span>
+      </header>
+
+      <% if @visible_rows.empty? %>
+        <p class="py-12 text-center text-sm text-secondary"><%= t("myfin.transaction_explorer.empty") %></p>
+      <% else %>
+        <div class="max-h-[calc(100vh-10rem)] overflow-auto">
+          <table class="w-full min-w-[900px] text-sm">
+            <thead class="sticky top-0 z-10 bg-container-inset text-left text-xs text-secondary">
+              <tr>
+                <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.date") %></th>
+                <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.entity") %></th>
+                <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.wdg") %></th>
+                <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.jpw") %></th>
+                <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.description") %></th>
+                <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.account") %></th>
+                <th class="px-3 py-2 text-right font-medium"><%= t("myfin.transaction_explorer.columns.amount") %></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @visible_rows.each do |row| %>
+                <tr class="border-b border-tertiary hover:bg-surface-hover" data-entry-id="<%= row.entry_id %>">
+                  <td class="whitespace-nowrap px-3 py-2 text-secondary"><%= l(row.date, format: :short) %></td>
+                  <td class="px-3 py-2">
+                    <div class="flex flex-wrap gap-1">
+                      <% row.entity_names.each do |entity_name| %>
+                        <span class="rounded-full bg-container-inset px-2 py-0.5 text-xs text-secondary"><%= entity_name %></span>
+                      <% end %>
+                    </div>
+                  </td>
+                  <td class="px-3 py-2 text-primary"><%= row.wdg %></td>
+                  <td class="px-3 py-2 text-primary"><%= row.jpw %></td>
+                  <td class="min-w-56 px-3 py-2 text-primary">
+                    <%= row.description %>
+                    <span class="mt-0.5 block text-xs text-secondary"><%= row.type %></span>
+                  </td>
+                  <td class="px-3 py-2 text-secondary"><%= row.account_name %></td>
+                  <td class="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums <%= row.amount.negative? ? "text-destructive" : "text-success" %>">
+                    <%= format_money(Money.new(row.amount, Current.family.currency)) %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    </section>
+  </div>
+</div>

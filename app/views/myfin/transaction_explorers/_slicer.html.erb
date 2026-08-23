@@ -1,0 +1,25 @@
+<%# locals: (label:, key:, options:, selected:) %>
+
+<fieldset class="min-w-0 rounded-lg border border-secondary bg-container px-3 py-2">
+  <legend class="px-1 text-xs font-medium text-secondary"><%= label %></legend>
+  <div class="flex flex-wrap gap-1.5">
+    <% options.each do |value, text| %>
+      <% input_id = "transaction-explorer-#{key}-#{value.to_s.parameterize}" %>
+      <label for="<%= input_id %>" class="cursor-pointer">
+        <%= check_box_tag "#{key}[]",
+              value,
+              selected.include?(value.to_s),
+              id: input_id,
+              class: "peer sr-only",
+              data: {
+                auto_submit_form_target: "auto",
+                autosubmit_trigger_event: "change",
+                autosubmit_debounce_timeout: "0"
+              } %>
+        <span class="inline-flex min-h-8 items-center rounded-md border border-secondary bg-container px-2.5 py-1 text-xs font-medium text-secondary transition-colors hover:bg-surface-hover peer-checked:border-primary peer-checked:bg-container-inset peer-checked:text-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary">
+          <%= text %>
+        </span>
+      </label>
+    <% end %>
+  </div>
+</fieldset>
