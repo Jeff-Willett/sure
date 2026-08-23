@@ -126,8 +126,28 @@ module Myfin
         end
 
         def build_rollup(rows)
-          rows.group_by(&:type).map do |type, grouped_rows|
-            RollupType.new(type: type, amount: grouped_rows.sum(BigDecimal("0"), &:amount), groups: [])
+          rows.group_by(&:type).map do |type, type_rows|
+            groups = type_rows.group_by(&:wdg).map do |wdg, group_rows|
+              categories = group_rows.group_by(&:jpw).map do |jpw, category_rows|
+                RollupCategory.new(
+                  jpw: jpw,
+                  amount: category_rows.sum(BigDecimal("0"), &:amount),
+                  count: category_rows.size
+                )
+              end.sort_by { |category| [ -category.amount.abs, category.jpw ] }
+
+              RollupGroup.new(
+                wdg: wdg,
+                amount: group_rows.sum(BigDecimal("0"), &:amount),
+                categories: categories
+              )
+            end.sort_by { |group| [ -group.amount.abs, group.wdg ] }
+
+            RollupType.new(
+              type: type,
+              amount: type_rows.sum(BigDecimal("0"), &:amount),
+              groups: groups
+            )
           end.sort_by { |rollup| TYPE_ORDER.fetch(rollup.type, 99) }
         end
 
