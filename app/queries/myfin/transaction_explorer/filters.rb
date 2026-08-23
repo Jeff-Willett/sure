@@ -12,9 +12,10 @@ module Myfin
       attr_reader :search
 
       def initialize(params)
-        @explicit = FILTER_KEYS.index_with { |key| params.key?(key) }
-        @values = FILTER_KEYS.index_with { |key| normalize(key, params[key]) }
-        @search = params[:search].to_s.strip.downcase
+        @explicit = FILTER_KEYS.index_with { |key| params.key?(key) }.freeze
+        @values = FILTER_KEYS.index_with { |key| normalize(key, params[key]) }.freeze
+        @search = params[:search].to_s.strip.downcase.freeze
+        freeze
       end
 
       def values_for(key)
@@ -34,9 +35,9 @@ module Myfin
       private
         def normalize(key, raw)
           values = Array(raw).compact_blank.reject { |value| value == NONE_VALUE }
-          return values.map(&:to_i).uniq if INTEGER_KEYS.include?(key)
+          return values.map(&:to_i).uniq.freeze if INTEGER_KEYS.include?(key)
 
-          values.map(&:to_s).uniq
+          values.map(&:to_s).uniq.freeze
         end
     end
   end

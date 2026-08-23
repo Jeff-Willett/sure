@@ -27,4 +27,16 @@ class MyfinTransactionExplorerFiltersTest < ActiveSupport::TestCase
     assert_empty cleared.values_for(:years)
     assert_empty cleared.selected_values(:years, available: [ 2025, 2026 ])
   end
+
+  test "keeps normalized values and search immutable" do
+    filters = Myfin::TransactionExplorer::Filters.from_params(
+      years: [ "2025" ],
+      search: "  rent  "
+    )
+
+    assert_raises(FrozenError) { filters.values_for(:years) << 2026 }
+    assert_raises(FrozenError) { filters.search << " payment" }
+    assert_equal [ 2025 ], filters.values_for(:years)
+    assert_equal "rent", filters.search
+  end
 end
