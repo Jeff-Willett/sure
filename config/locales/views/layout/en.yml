@@ -12,6 +12,7 @@ en:
         budgets: Budgets
         home: Home
         reports: Reports
+        transaction_explorer: Explorer
         goals: Goals
         transactions: Transactions
     auth:

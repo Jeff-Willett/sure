@@ -2,6 +2,42 @@ en:
   myfin:
     reporting_profiles:
       selector_label: "Reporting profile: %{profile}"
+    transaction_explorer:
+      title: "Transaction Explorer"
+      filters:
+        entities: "Entity"
+        years: "Year"
+        months: "Month"
+        types: "Type"
+        wdg: "WDG category"
+        jpw: "JPW category"
+        search: "Search transactions"
+        more: "WDG and JPW categories"
+        reset: "Reset filters"
+        select_all: "Select all"
+        clear_all: "Clear all"
+        single_selection: "Use single selection"
+        multiple_selection: "Use multiple selection"
+      shared_set: "%{count} transactions in this view"
+      rollup_title: "Rollup"
+      rollup_help: "WDG / JPW"
+      resize_rollup: "Resize rollup panel"
+      ledger_title: "Transactions"
+      showing: "Showing %{shown} of %{total}"
+      empty: "No transactions match these slicers."
+      metrics:
+        transactions: "Transactions"
+        expenses: "Expenses"
+        income: "Income"
+        transfer_net: "Transfer net"
+      columns:
+        date: "Date"
+        entity: "Entity"
+        wdg: "WDG"
+        jpw: "JPW"
+        description: "Description"
+        account: "Account"
+        amount: "Amount"
     transaction_dimensions:
       title: "MyFIN dimensions"
     entry_allocations:

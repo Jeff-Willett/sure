@@ -1,0 +1,17 @@
+<%# locals: (metrics:) %>
+
+<section class="grid grid-cols-2 divide-x divide-y divide-secondary border-b border-secondary bg-container @3xl:grid-cols-4 @3xl:divide-y-0">
+  <% [
+    [ :transactions, metrics.transactions, nil ],
+    [ :expenses, metrics.expenses, "text-destructive" ],
+    [ :income, metrics.income, "text-success" ],
+    [ :transfer_net, metrics.transfer_net, "text-info" ]
+  ].each do |key, value, color_class| %>
+    <div class="min-w-0 px-4 py-3.5">
+      <p class="text-xs text-secondary"><%= t("myfin.transaction_explorer.metrics.#{key}") %></p>
+      <p class="mt-1 text-xl font-medium tracking-tight tabular-nums <%= color_class %>">
+        <%= key == :transactions ? value : format_money(Money.new(value, Current.family.currency)) %>
+      </p>
+    </div>
+  <% end %>
+</section>
