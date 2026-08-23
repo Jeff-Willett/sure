@@ -1,19 +1,19 @@
 <%# locals: (label:, key:, options:, selected:) %>
 
 <fieldset
-  class="min-w-0 rounded-lg border border-secondary bg-container px-3 py-2"
+  class="min-w-0 bg-container px-3 py-3"
   data-controller="transaction-explorer-slicer"
   data-transaction-explorer-slicer-key-value="<%= key %>"
   data-transaction-explorer-slicer-single-label-value="<%= t("myfin.transaction_explorer.filters.single_selection") %>"
   data-transaction-explorer-slicer-multiple-label-value="<%= t("myfin.transaction_explorer.filters.multiple_selection") %>">
   <legend class="sr-only"><%= label %></legend>
 
-  <div class="mb-2 flex items-center justify-between gap-2">
+  <div class="mb-2.5 flex items-center justify-between gap-2">
     <span class="text-xs font-medium text-secondary"><%= label %></span>
     <div class="flex items-center gap-0.5">
       <button
         type="button"
-        class="inline-flex h-7 w-7 items-center justify-center rounded-md text-secondary hover:bg-surface-hover hover:text-primary focus-ring"
+        class="inline-flex h-7 w-7 items-center justify-center rounded-md text-subdued transition-colors hover:bg-surface-hover hover:text-primary focus-ring motion-reduce:transition-none"
         aria-label="<%= t("myfin.transaction_explorer.filters.select_all") %>"
         title="<%= t("myfin.transaction_explorer.filters.select_all") %>"
         data-action="transaction-explorer-slicer#selectAll">
@@ -21,7 +21,7 @@
       </button>
       <button
         type="button"
-        class="inline-flex h-7 w-7 items-center justify-center rounded-md text-secondary hover:bg-surface-hover hover:text-primary focus-ring"
+        class="inline-flex h-7 w-7 items-center justify-center rounded-md text-subdued transition-colors hover:bg-surface-hover hover:text-primary focus-ring motion-reduce:transition-none"
         aria-label="<%= t("myfin.transaction_explorer.filters.clear_all") %>"
         title="<%= t("myfin.transaction_explorer.filters.clear_all") %>"
         data-action="transaction-explorer-slicer#clearAll">
@@ -29,7 +29,7 @@
       </button>
       <button
         type="button"
-        class="inline-flex h-7 w-7 items-center justify-center rounded-md text-secondary hover:bg-surface-hover hover:text-primary focus-ring"
+        class="inline-flex h-7 w-7 items-center justify-center rounded-md text-subdued transition-colors hover:bg-surface-hover hover:text-primary focus-ring motion-reduce:transition-none"
         aria-label="<%= t("myfin.transaction_explorer.filters.single_selection") %>"
         aria-pressed="false"
         title="<%= t("myfin.transaction_explorer.filters.single_selection") %>"
@@ -42,7 +42,7 @@
   </div>
 
   <%= hidden_field_tag "#{key}[]", "__none__" %>
-  <div class="flex flex-wrap gap-1.5">
+  <div class="flex flex-wrap gap-1">
     <% options.each do |value, text| %>
       <% input_id = "transaction-explorer-#{key}-#{value.to_s.parameterize}" %>
       <label for="<%= input_id %>" class="cursor-pointer">
@@ -58,7 +58,7 @@
                 transaction_explorer_slicer_target: "checkbox",
                 action: "transaction-explorer-slicer#selectionChanged"
               } %>
-        <span class="inline-flex min-h-8 items-center rounded-md border border-secondary bg-container px-2.5 py-1 text-xs font-medium text-secondary transition-colors hover:bg-surface-hover peer-checked:border-primary peer-checked:bg-container-inset peer-checked:text-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary">
+        <span class="inline-flex min-h-8 items-center rounded-md bg-container-inset px-2.5 py-1 text-xs font-medium text-secondary transition-colors duration-200 hover:bg-container-inset-hover hover:text-primary peer-checked:bg-inverse peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-focus-ring theme-dark:peer-checked:text-black motion-reduce:transition-none">
           <%= text %>
         </span>
       </label>

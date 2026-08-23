@@ -1,24 +1,24 @@
 <% content_for :hide_myfin_profile_selector, true %>
 
-<div class="@container space-y-4 pb-8">
+<div class="@container space-y-3 pb-8">
   <h1 class="sr-only"><%= t("myfin.transaction_explorer.title") %></h1>
 
   <%= render "filters", report: @report %>
 
   <div
-    class="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-secondary bg-container-inset px-3 py-2 text-xs text-secondary"
+    class="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 py-0.5 text-xs text-secondary"
     data-testid="transaction-explorer-shared-set"
     data-ledger-count="<%= @report.rows.size %>"
     data-rollup-count="<%= @report.rows.size %>">
-    <span class="inline-flex h-2 w-2 rounded-full bg-success"></span>
+    <span class="inline-flex h-1.5 w-1.5 rounded-full bg-success"></span>
     <strong class="text-primary"><%= t("myfin.transaction_explorer.shared_set", count: @report.rows.size) %></strong>
-    <span>Rollup: <%= @report.rows.size %></span>
-    <span>Ledger: <%= @report.rows.size %></span>
+    <span class="text-subdued">Rollup <%= @report.rows.size %></span>
+    <span class="text-subdued">Ledger <%= @report.rows.size %></span>
   </div>
 
   <%= render "metrics", metrics: @report.metrics %>
 
-  <div class="grid items-start gap-4 @3xl:grid-cols-[minmax(260px,0.34fr)_minmax(0,1fr)]">
+  <div class="grid items-start rounded-xl border border-secondary bg-container @3xl:grid-cols-[minmax(260px,0.32fr)_minmax(0,1fr)]">
     <%= render "rollup", rollup: @report.rollup %>
     <%= render "ledger", rows: @visible_rows, total_count: @report.rows.size %>
   </div>

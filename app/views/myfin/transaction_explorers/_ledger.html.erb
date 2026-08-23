@@ -1,17 +1,17 @@
 <%# locals: (rows:, total_count:) %>
 
-<section class="min-w-0 rounded-xl bg-container shadow-border-xs">
-  <header class="flex items-center justify-between border-b border-secondary px-4 py-3">
-    <h2 class="font-medium text-primary"><%= t("myfin.transaction_explorer.ledger_title") %></h2>
+<section class="min-w-0 bg-container">
+  <header class="flex min-h-12 items-center justify-between border-b border-secondary px-4 py-3">
+    <h2 class="text-sm font-semibold text-primary"><%= t("myfin.transaction_explorer.ledger_title") %></h2>
     <span class="text-xs text-secondary"><%= t("myfin.transaction_explorer.showing", shown: rows.size, total: total_count) %></span>
   </header>
 
   <% if rows.empty? %>
     <p class="py-12 text-center text-sm text-secondary"><%= t("myfin.transaction_explorer.empty") %></p>
   <% else %>
-    <div class="max-h-[calc(100vh-10rem)] overflow-auto">
-      <table class="w-full min-w-[900px] text-sm">
-        <thead class="sticky top-0 z-10 bg-container-inset text-left text-xs text-secondary">
+    <div class="table-scroll max-h-[calc(100vh-10rem)] overflow-auto [--table-scroll-bg:var(--color-container)]">
+      <table class="w-full min-w-[920px] text-sm">
+        <thead class="sticky top-0 z-10 bg-container text-left text-xs text-secondary shadow-border-xs">
           <tr>
             <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.date") %></th>
             <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.entity") %></th>
@@ -24,12 +24,12 @@
         </thead>
         <tbody>
           <% rows.each do |row| %>
-            <tr class="border-b border-tertiary hover:bg-surface-hover" data-entry-id="<%= row.entry_id %>">
-              <td class="whitespace-nowrap px-3 py-2 text-secondary"><%= l(row.date, format: :short) %></td>
+            <tr class="border-b border-tertiary transition-colors hover:bg-surface-hover motion-reduce:transition-none" data-entry-id="<%= row.entry_id %>">
+              <td class="whitespace-nowrap px-3 py-2.5 text-secondary"><%= l(row.date, format: :short) %></td>
               <td class="px-3 py-2">
                 <div class="flex flex-wrap gap-1">
                   <% row.entity_names.each do |entity_name| %>
-                    <span class="rounded-full bg-container-inset px-2 py-0.5 text-xs text-secondary"><%= entity_name %></span>
+                    <span class="rounded-md bg-container-inset px-2 py-0.5 text-xs text-secondary"><%= entity_name %></span>
                   <% end %>
                 </div>
               </td>

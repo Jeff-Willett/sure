@@ -1,33 +1,33 @@
 <%# locals: (rollup:) %>
 
-<section class="rounded-xl bg-container shadow-border-xs @3xl:sticky @3xl:top-24 @3xl:max-h-[calc(100vh-7rem)] @3xl:overflow-y-auto">
-  <header class="flex items-center justify-between border-b border-secondary px-4 py-3">
-    <h2 class="font-medium text-primary"><%= t("myfin.transaction_explorer.rollup_title") %></h2>
+<section class="border-b border-secondary bg-container @3xl:sticky @3xl:top-24 @3xl:max-h-[calc(100vh-7rem)] @3xl:overflow-y-auto @3xl:border-b-0 @3xl:border-r">
+  <header class="flex min-h-12 items-center justify-between border-b border-secondary px-4 py-3">
+    <h2 class="text-sm font-semibold text-primary"><%= t("myfin.transaction_explorer.rollup_title") %></h2>
     <span class="text-xs text-secondary"><%= t("myfin.transaction_explorer.rollup_help") %></span>
   </header>
 
-  <div class="space-y-4 p-4">
+  <div class="space-y-5 p-3">
     <% if rollup.empty? %>
       <p class="py-8 text-center text-sm text-secondary"><%= t("myfin.transaction_explorer.empty") %></p>
     <% end %>
 
     <% rollup.each do |type| %>
       <section>
-        <div class="flex items-center justify-between border-b-2 border-primary pb-2 font-medium text-primary">
+        <div class="flex items-center justify-between px-1 pb-1.5 text-sm font-semibold text-primary">
           <span><%= type.type %></span>
           <span class="tabular-nums"><%= format_money(Money.new(type.amount.abs, Current.family.currency)) %></span>
         </div>
-        <div class="mt-2 space-y-2">
+        <div class="space-y-1">
           <% type.groups.each do |group| %>
             <div>
               <%= link_to myfin_transaction_explorer_path(request.query_parameters.merge(wdg_categories: [ group.wdg ])),
-                    class: "flex items-start justify-between gap-3 rounded-md bg-container-inset px-2.5 py-2 text-sm font-medium text-primary hover:bg-container-inset-hover" do %>
+                    class: "flex items-start justify-between gap-3 rounded-md px-2.5 py-2 text-sm font-medium text-primary transition-colors hover:bg-container-inset motion-reduce:transition-none" do %>
                 <span><%= group.wdg %></span>
                 <span class="tabular-nums"><%= format_money(Money.new(group.amount.abs, Current.family.currency)) %></span>
               <% end %>
               <% group.categories.each do |category| %>
                 <%= link_to myfin_transaction_explorer_path(request.query_parameters.merge(jpw_categories: [ category.jpw ])),
-                      class: "flex items-start justify-between gap-3 border-b border-tertiary px-3 py-1.5 text-xs text-secondary hover:bg-surface-hover hover:text-primary" do %>
+                      class: "flex items-start justify-between gap-3 rounded-md px-3 py-1.5 text-xs text-secondary transition-colors hover:bg-surface-hover hover:text-primary motion-reduce:transition-none" do %>
                   <span><%= category.jpw %></span>
                   <span class="tabular-nums"><%= format_money(Money.new(category.amount.abs, Current.family.currency)) %></span>
                 <% end %>
