@@ -41,6 +41,14 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "main", text: /Working frame/, count: 0
     assert_select "input[name='entity_ids[]'][value='#{@personal.id}']", checked: "checked"
     assert_select "input[name='entity_ids[]'][value='#{@gci.id}']", count: 1
+    assert_select "fieldset[data-controller='transaction-explorer-slicer']", count: 6 do |slicers|
+      slicers.each do |slicer|
+        assert_select slicer, "input[type='hidden'][value='__none__']", count: 1
+        assert_select slicer, "button[aria-label='Select all']", count: 1
+        assert_select slicer, "button[aria-label='Clear all']", count: 1
+        assert_select slicer, "button[aria-label='Use single selection']", count: 1
+      end
+    end
     assert_select "[data-testid='transaction-explorer-shared-set'][data-ledger-count='1'][data-rollup-count='1']"
     assert_select "tr[data-entry-id='#{personal_entry.id}']", count: 1
     assert_select "tr[data-entry-id='#{gci_entry.id}']", count: 0

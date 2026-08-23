@@ -1,7 +1,47 @@
 <%# locals: (label:, key:, options:, selected:) %>
 
-<fieldset class="min-w-0 rounded-lg border border-secondary bg-container px-3 py-2">
-  <legend class="px-1 text-xs font-medium text-secondary"><%= label %></legend>
+<fieldset
+  class="min-w-0 rounded-lg border border-secondary bg-container px-3 py-2"
+  data-controller="transaction-explorer-slicer"
+  data-transaction-explorer-slicer-key-value="<%= key %>"
+  data-transaction-explorer-slicer-single-label-value="<%= t("myfin.transaction_explorer.filters.single_selection") %>"
+  data-transaction-explorer-slicer-multiple-label-value="<%= t("myfin.transaction_explorer.filters.multiple_selection") %>">
+  <legend class="sr-only"><%= label %></legend>
+
+  <div class="mb-2 flex items-center justify-between gap-2">
+    <span class="text-xs font-medium text-secondary"><%= label %></span>
+    <div class="flex items-center gap-0.5">
+      <button
+        type="button"
+        class="inline-flex h-7 w-7 items-center justify-center rounded-md text-secondary hover:bg-surface-hover hover:text-primary focus-ring"
+        aria-label="<%= t("myfin.transaction_explorer.filters.select_all") %>"
+        title="<%= t("myfin.transaction_explorer.filters.select_all") %>"
+        data-action="transaction-explorer-slicer#selectAll">
+        <%= icon("check-check", size: "sm") %>
+      </button>
+      <button
+        type="button"
+        class="inline-flex h-7 w-7 items-center justify-center rounded-md text-secondary hover:bg-surface-hover hover:text-primary focus-ring"
+        aria-label="<%= t("myfin.transaction_explorer.filters.clear_all") %>"
+        title="<%= t("myfin.transaction_explorer.filters.clear_all") %>"
+        data-action="transaction-explorer-slicer#clearAll">
+        <%= icon("x", size: "sm") %>
+      </button>
+      <button
+        type="button"
+        class="inline-flex h-7 w-7 items-center justify-center rounded-md text-secondary hover:bg-surface-hover hover:text-primary focus-ring"
+        aria-label="<%= t("myfin.transaction_explorer.filters.single_selection") %>"
+        aria-pressed="false"
+        title="<%= t("myfin.transaction_explorer.filters.single_selection") %>"
+        data-transaction-explorer-slicer-target="modeButton"
+        data-action="transaction-explorer-slicer#toggleMode">
+        <span data-transaction-explorer-slicer-target="multipleIcon"><%= icon("list-checks", size: "sm") %></span>
+        <span class="hidden" data-transaction-explorer-slicer-target="singleIcon"><%= icon("circle-dot", size: "sm") %></span>
+      </button>
+    </div>
+  </div>
+
+  <%= hidden_field_tag "#{key}[]", "__none__" %>
   <div class="flex flex-wrap gap-1.5">
     <% options.each do |value, text| %>
       <% input_id = "transaction-explorer-#{key}-#{value.to_s.parameterize}" %>
@@ -14,7 +54,9 @@
               data: {
                 auto_submit_form_target: "auto",
                 autosubmit_trigger_event: "change",
-                autosubmit_debounce_timeout: "0"
+                autosubmit_debounce_timeout: "0",
+                transaction_explorer_slicer_target: "checkbox",
+                action: "transaction-explorer-slicer#selectionChanged"
               } %>
         <span class="inline-flex min-h-8 items-center rounded-md border border-secondary bg-container px-2.5 py-1 text-xs font-medium text-secondary transition-colors hover:bg-surface-hover peer-checked:border-primary peer-checked:bg-container-inset peer-checked:text-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary">
           <%= text %>
