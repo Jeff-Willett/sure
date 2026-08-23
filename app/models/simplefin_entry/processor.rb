@@ -119,15 +119,19 @@ class SimplefinEntry::Processor
     end
 
     def pershing_savings_deposit?
-      account.name.to_s.match?(/savings/i) &&
+      account_label.match?(/savings/i) &&
         name.match?(/pershing/i) &&
         amount.negative?
     end
 
     def scheduled_savings_to_checking_income?
-      account.name.to_s.match?(/checking/i) &&
+      account_label.match?(/checking/i) &&
         name.match?(/\b(?:savings?|sav)\b/i) &&
         amount == -3000
+    end
+
+    def account_label
+      [ simplefin_account.name, account.name ].compact.join(" ")
     end
 
     def data
