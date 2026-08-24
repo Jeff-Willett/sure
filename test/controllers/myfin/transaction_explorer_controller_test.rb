@@ -92,6 +92,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path, params: { search: "grid" }
 
     assert_response :success
+    shopping_category = @family.myfin_category_schemes.find_by!(name: "WDG").scheme_categories.find_by!(name: "Shopping")
     assert_select "div[data-controller~='transaction-explorer-grid']", count: 1 do
       assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 7
       assert_select "thead th", count: 7 do |headers|
@@ -104,6 +105,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form[action*='search=grid'] input[name='scheme_id']", count: 1
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form select[name='category_id'] option[value='']", text: "Uncategorized", count: 1
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form select[name='category_id'] option[value=''][selected]", count: 0
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form select[name='category_id'] option[value='#{shopping_category.id}'][selected]", text: "Shopping", count: 1
       assert_select "th[data-column='date'][style*='transaction-explorer-date-offset']", count: 1
       assert_select "th[data-column='entity'][style*='transaction-explorer-entity-offset']", count: 1
     end

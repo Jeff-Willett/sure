@@ -3,6 +3,7 @@
 <% category_id = row.public_send("#{value_key}_category_id") %>
 <% label = row.public_send(value_key) %>
 <% options = category_options.fetch(scheme, []) %>
+<% select_options = options.map { |category_id, category_name| [ category_name, category_id ] } %>
 <% scheme_id = transaction_explorer_scheme_ids.fetch(scheme) %>
 <% action_url = myfin_entry_transaction_explorer_classification_path(row.entry_id, request.query_parameters) %>
 
@@ -29,7 +30,7 @@
         <%= form.hidden_field :scheme_id, value: scheme_id %>
         <%= form.hidden_field :expected_category_id, value: category_id %>
         <%= form.select :category_id,
-          options,
+          select_options,
           { include_blank: t("myfin.transaction_explorer.category_uncategorized"), selected: category_id },
           {
             class: "form-field__input min-w-0",
