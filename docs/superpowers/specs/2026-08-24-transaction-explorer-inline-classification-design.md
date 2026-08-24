@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved in conversation by Jeff Willett on 2026-08-24. Implementation requires review of this written spec. This design does not authorize a production deployment or changes to production financial data.
+Revised for review on 2026-08-24 after Jeff Willett asked for a spreadsheet-style interaction model. Implementation requires approval of this revised spec. This design does not authorize a production deployment or changes to production financial data.
 
 ## Goal
 
@@ -13,6 +13,8 @@ Make the Transaction Explorer ledger a practical classification workspace. Users
 - No automatic JPW-to-WDG assignment in this version.
 - No GCI, Donna, or Danielle category-scheme migration.
 - No bulk edit, rule creation, or spreadsheet synchronization.
+- No multi-cell selection, copy and paste, fill handle, formula, or range operation in the first release.
+- No column reordering, column hiding, or user-defined columns in the first release.
 - No editing of entity, date, description, account, amount, or transaction type.
 - No production data apply or production deployment.
 
@@ -58,20 +60,52 @@ The Explorer uses dedicated member routes scoped by entry ID:
 
 The write service accepts the entry, scheme, target category, expected current category, actor, and action metadata. Controllers do not duplicate permission, locking, audit, mirroring, or stale-write logic.
 
-## Edit mode
+## Module seams
 
-The Transactions header has an `Edit categories` toggle. Edit mode is local UI state and defaults off after a new browser session. Only users who can annotate the visible accounts see the control.
+The server-side deep module is `Myfin::ClassificationEditor`. Its interface has one write operation that covers edit and revert:
+
+```ruby
+Myfin::ClassificationEditor.call(
+  entry:,
+  scheme:,
+  target_category:,
+  expected_category:,
+  actor:,
+  source:,
+  revert_of: nil
+)
+```
+
+It returns a result containing the committed classification and audit change. Locking, permission-ready validation, stale-write detection, audit creation, WDG mirroring, and rollback remain inside the module. Explorer edit and revert controllers use this same interface rather than writing classifications directly. Importers and automated classification paths remain separate and are not added to the manual-edit audit ledger in this version.
+
+`Myfin::ClassificationHistory` is the read module for per-transaction and recent accessible history. It owns access scoping, ordering, bounded pagination, and render-ready event data. The ledger never queries audit rows per rendered transaction.
+
+On the client, one Transaction Explorer grid controller owns edit mode, the active-cell state machine, keyboard movement, focus restoration, and save-state rendering. Column-width calculations live in a small pure JavaScript module so they can be tested without a browser. The Stimulus controller is the DOM adapter, not a second source of grid rules.
+
+## Spreadsheet interaction model
+
+The ledger remains a semantic HTML table and gains grid behavior only in edit mode. The Transactions header has an `Edit categories` toggle. Edit mode is local UI state and defaults off after a new browser session. Only users who can annotate at least one visible row see the control; rows without annotate permission remain read-only.
 
 When active:
 
-- WDG and JPW cells render compact searchable category dropdowns.
+- One WDG or JPW cell is the active cell and receives a clear focus outline. The grid uses roving `tabindex`, so 500 category cells do not enter the page tab order at once.
+- Clicking a category cell selects it. Double-click, Enter, F2, or typing a printable character opens its compact searchable category editor.
+- Arrow keys move between editable cells and rows without saving.
+- Tab and Shift+Tab move through WDG and JPW cells across rows.
+- Enter commits the selected category. Escape cancels and restores the server-confirmed value.
+- A deliberate category selection also commits immediately. Blur alone never saves financial data.
+- After a successful save, focus returns to the same logical cell by entry ID and scheme, or moves to the nearest remaining row if the edited row leaves the filtered view.
+- WDG and JPW cells expose all active categories in their family scheme, including a deliberate `Uncategorized` choice. Current filter availability may influence ordering or secondary text, but it never prevents assigning a valid category that is absent from the current result set.
 - All other cells remain read-only.
-- Selecting a category submits immediately.
 - The active cell shows a saving state and prevents a second submission.
 - Success replaces the affected Explorer state and shows an Undo toast.
 - Validation, permission, or stale-write errors stay beside the cell and preserve the user's current table position.
 
-The server response recalculates the report from the current URL filters. Ledger, metrics, rollup, shared-set counts, and category filter options therefore continue to derive from the same filtered row set. If the edited row no longer matches an active category filter, it leaves the ledger after save and the toast explains that the row moved out of the current view.
+Edit mode off preserves ordinary table behavior: text selection, links, scrolling, and screen-reader table navigation. The grid controller does not capture arrow keys when focus is inside another control or when edit mode is off.
+
+The server response recalculates the report once from the current URL filters and returns one Turbo Stream response for every affected fragment. Ledger, metrics, rollup, shared-set counts, and category filter options therefore continue to derive from the same filtered row set. The grid controller preserves scroll position, active-cell identity, edit-mode state, and saved column widths across those fragment replacements. If the edited row no longer matches an active category filter, it leaves the ledger after save and the toast explains that the row moved out of the current view.
+
+The UI waits for the server response before presenting the new category as committed. It may show the pending selection inside the editor, but the read cell, rollup, and totals remain server-authoritative. Different cells may be navigated while a save is pending, but the same transaction and scheme cannot submit a second write until the first completes.
 
 ## History and undo
 
@@ -81,6 +115,8 @@ The Transactions header also has `Recent changes`. It opens a table-wide panel s
 
 The immediate Undo toast calls the same revert route used by permanent history. Undo is allowed only while the referenced change remains the latest change for that transaction and scheme. If another edit has occurred, the server returns a conflict and the UI refreshes the current value.
 
+Multiple rapid edits create separate audit events and separate undo opportunities. Toasts queue rather than replacing one another. Permanent history remains the authoritative recovery path after a toast expires.
+
 ## Resizable columns
 
 Every ledger header has a drag handle. A dedicated Stimulus controller manages a `colgroup` so header and body widths stay aligned.
@@ -88,10 +124,12 @@ Every ledger header has a drag handle. A dedicated Stimulus controller manages a
 - Date, entity, WDG, JPW, description, account, and amount each have minimum widths.
 - Description receives remaining width when the table is wider than the saved columns.
 - Horizontal scrolling remains available when saved widths exceed the viewport.
+- Date and entity stay frozen on the left at desktop widths so row context remains visible during horizontal scrolling. Frozen positioning turns off at compact breakpoints where it would consume most of the viewport.
 - Widths persist in `localStorage` under a versioned Transaction Explorer key.
 - Double-clicking a handle resets that column to its default.
 - Keyboard users can focus a handle and adjust it in fixed increments with arrow keys.
 - Resizing is presentation-only and never submits the filter form.
+- The header includes `Reset column widths`. Reordering and hiding columns remain future work.
 
 ## Permissions and privacy
 
@@ -109,10 +147,14 @@ Every ledger header has a drag handle. A dedicated Stimulus controller manages a
 - A missing or inaccessible entry returns the normal not-found response.
 - A failed native WDG mirror rolls back both the classification and audit record.
 - A Turbo failure leaves the current cell value visible and offers retry; it never claims the save succeeded.
+- A category removed while its editor is open produces a validation error and refreshes the available choices.
+- Loss of focus, scrolling, or closing edit mode with an open but uncommitted editor cancels the pending selection.
 
 ## Performance
 
 The ledger still renders at most 250 rows. Category option collections load once per request and are reused by cell editors. Recent history uses an index beginning with family and creation time; row history uses transaction, scheme, and creation time. Turbo responses may refresh the Explorer's report sections but must not issue one category query per row.
+
+Before choosing whole-fragment replacement as the permanent update path, measure one edit against the restored 2,108-row preview view. The acceptance target is a responsive cell-saving state followed by a completed refresh without scroll or focus loss. If one report rebuild is too slow, deepen the report module with a post-edit refresh interface; do not add separate totals, rollup, and filter queries in the controller.
 
 ## Verification
 
@@ -129,6 +171,12 @@ Automated checks must prove:
 - report totals, rollup, ledger, and filter options refresh from the same post-edit set
 - a row leaves a filtered view when its edited category no longer matches
 - the resize controller persists, restores, resets, clamps, and keyboard-adjusts widths
+- active-cell movement covers arrows, Tab, Shift+Tab, Enter, F2, Escape, first and last rows, and a row disappearing after save
+- roving `tabindex` leaves exactly one grid cell in the tab order
+- blur and scroll never commit a category
+- a deliberate `Uncategorized` edit and revert handle a missing classification correctly
+- Turbo replacement restores scroll position, edit mode, and logical cell focus
+- editor options include all active scheme categories even when the current filters contain none of their transactions
 - edit mode does not make non-category cells editable
 
 Browser verification on the isolated port-8950 preview must show representative sample edits and reverts. Before schema or image changes to the production-data preview clone, run the documented preview backup and restore verification. Verification may mutate only the isolated preview clone and must record the exact sample transaction and before-and-after category values without exposing private transaction details in chat or screenshots.
