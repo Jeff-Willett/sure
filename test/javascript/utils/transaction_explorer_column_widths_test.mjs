@@ -54,6 +54,14 @@ test("rejects malformed stored payload", () => {
     () => parseStoredWidths("not-json"),
     /Malformed transaction explorer column width data/,
   )
+  assert.throws(
+    () => parseStoredWidths(""),
+    /Malformed transaction explorer column width data/,
+  )
+  assert.throws(
+    () => parseStoredWidths("[]"),
+    /Malformed transaction explorer column width data/,
+  )
 })
 
 test("rejects unknown columns from storage", () => {
@@ -66,6 +74,36 @@ test("rejects unknown columns from storage", () => {
         }),
       ),
     /Unknown transaction explorer column/,
+  )
+})
+
+test("rejects malformed storage member values", () => {
+  assert.throws(
+    () =>
+      parseStoredWidths(
+        JSON.stringify({
+          date: "140px",
+        }),
+      ),
+    /Malformed transaction explorer column width data/,
+  )
+  assert.throws(
+    () =>
+      parseStoredWidths(
+        JSON.stringify({
+          entity: null,
+        }),
+      ),
+    /Malformed transaction explorer column width data/,
+  )
+  assert.throws(
+    () =>
+      parseStoredWidths(
+        JSON.stringify({
+          date: Number.POSITIVE_INFINITY,
+        }),
+      ),
+    /Malformed transaction explorer column width data/,
   )
 })
 

@@ -65,7 +65,7 @@ export function resetWidth(column) {
 }
 
 export function parseStoredWidths(json) {
-  if (!json) return defaultWidths()
+  if (json === null || json === undefined) return defaultWidths()
 
   let raw
   try {
@@ -83,6 +83,13 @@ export function parseStoredWidths(json) {
   const unknown = keys.filter((key) => !known.includes(key))
   if (unknown.length > 0) {
     throw new Error(`Unknown transaction explorer column: ${unknown.join(", ")}`)
+  }
+
+  const invalid = Object.entries(raw).find(
+    ([, width]) => typeof width !== "number" || !Number.isFinite(width),
+  )
+  if (invalid) {
+    throw new Error(`Malformed transaction explorer column width data`)
   }
 
   return {

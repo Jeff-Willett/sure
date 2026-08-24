@@ -50,6 +50,22 @@ test("moves forward and backward by arrow and tab keys", () => {
     }),
     cells[1],
   )
+  assert.equal(
+    nextEditableCell({
+      cells,
+      active: cells[2],
+      key: "ArrowLeft",
+    }),
+    cells[1],
+  )
+  assert.equal(
+    nextEditableCell({
+      cells,
+      active: cells[2],
+      key: "ArrowRight",
+    }),
+    cells[3],
+  )
 })
 
 test("clamps movement at first and last positions", () => {
