@@ -56,6 +56,24 @@ en:
       invalid: "MyFIN categories could not be saved: %{message}"
       invalid_scheme: "Choose a category scheme from this family."
       invalid_category: "Choose a category from the selected scheme."
+    classification_changes:
+      index:
+        title: "Recent changes"
+        events: "Recent classification changes"
+        empty: "There are no classification changes yet."
+        more: "More changes"
+      show:
+        title: "Classification history for %{entry}"
+        events: "Classification change history"
+        empty: "There are no classification changes for this transaction."
+      event:
+        uncategorized: "Uncategorized"
+        deleted_user: "Deleted user"
+        by: "by %{actor}"
+        revert_target: "Reverts an earlier change"
+        actions:
+          edit: "Edited"
+          revert: "Reverted"
     review_items:
       resolved: "Review item resolved."
       invalid: "Review item could not be resolved: %{message}"
