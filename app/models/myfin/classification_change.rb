@@ -33,6 +33,10 @@ module Myfin
     validates :source, inclusion: { in: SOURCES }
     validate :previous_snapshot_is_consistent
     validate :new_snapshot_is_consistent
+    validate :transaction_belongs_to_change_family
+    validate :category_scheme_belongs_to_change_family
+    validate :previous_category_belongs_to_declared_scheme
+    validate :new_category_belongs_to_declared_scheme
 
     before_update :reject_mutation
     before_destroy :reject_mutation
@@ -47,9 +51,50 @@ module Myfin
       end
 
       def snapshot_is_consistent?(id_attribute, name_attribute)
-        return if public_send(id_attribute).present? == public_send(name_attribute).present?
+        category_id = public_send(id_attribute)
+        category_name = public_send(name_attribute)
+        return if category_id.blank? && category_name.blank?
 
-        errors.add(name_attribute, "must be present when the category is present")
+        if category_id.blank? || category_name.blank?
+          errors.add(name_attribute, "must be present when the category is present")
+          return
+        end
+
+        category = public_send(id_attribute.delete_suffix("_id"))
+        return if category.nil? || category.name == category_name
+
+        errors.add(name_attribute, "must match the category name")
+      end
+
+      def transaction_belongs_to_change_family
+        return if transaction.nil? || family_id.nil? || transaction_family_id == family_id
+
+        errors.add(:transaction, "must belong to the change family")
+      end
+
+      def category_scheme_belongs_to_change_family
+        return if category_scheme.nil? || family_id.nil? || category_scheme.family_id == family_id
+
+        errors.add(:category_scheme, "must belong to the change family")
+      end
+
+      def previous_category_belongs_to_declared_scheme
+        category_belongs_to_declared_scheme(:previous_category)
+      end
+
+      def new_category_belongs_to_declared_scheme
+        category_belongs_to_declared_scheme(:new_category)
+      end
+
+      def category_belongs_to_declared_scheme(category_attribute)
+        category = public_send(category_attribute)
+        return if category.nil? || category_scheme_id.nil? || category.category_scheme_id == category_scheme_id
+
+        errors.add(category_attribute, "must belong to the declared category scheme")
+      end
+
+      def transaction_family_id
+        transaction&.entry&.account&.family_id
       end
 
       def reject_mutation
