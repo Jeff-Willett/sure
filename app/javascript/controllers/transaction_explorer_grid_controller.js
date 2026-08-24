@@ -584,6 +584,8 @@ export default class extends Controller {
     const select = editor?.querySelector("select");
     if (!editor || !select) return;
 
+    const label = this.#labelFor(cell);
+    if (label) label.hidden = true;
     editor.hidden = false;
     cell.dataset.open = "true";
     this.#setActive(cell);
@@ -606,6 +608,8 @@ export default class extends Controller {
 
     select.value = cell.dataset.categoryId || "";
     editor.hidden = true;
+    const label = this.#labelFor(cell);
+    if (label) label.hidden = false;
     delete cell.dataset.open;
   }
 
@@ -749,6 +753,10 @@ export default class extends Controller {
 
   #editorFor(cell) {
     return cell?.querySelector("[data-editor]");
+  }
+
+  #labelFor(cell) {
+    return cell?.querySelector("[data-transaction-explorer-grid-label]");
   }
 
   #formFor(cell) {
