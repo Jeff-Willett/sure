@@ -22,7 +22,7 @@ module Myfin
       RollupGroup = Data.define(:wdg, :amount, :categories)
       RollupType = Data.define(:type, :amount, :groups)
       FilterOptions = Data.define(:entities, :years, :months, :types, :wdg_categories, :jpw_categories)
-      Result = Data.define(:rows, :metrics, :rollup, :filter_options, :category_options, :selected_filters)
+      Result = Data.define(:rows, :metrics, :rollup, :filter_options, :category_options, :selected_filters, :category_availability)
 
       TYPE_ORDER = { "Expense" => 0, "Income" => 1, "Transfer" => 2 }.freeze
 
@@ -46,7 +46,8 @@ module Myfin
           rollup: build_rollup(rows),
           filter_options: filter_options,
           category_options: build_category_options,
-          selected_filters: build_selected_filters(filter_options)
+          selected_filters: build_selected_filters(filter_options),
+          category_availability: build_category_availability(build_rows(selected_entity_ids))
         )
       end
 
@@ -124,12 +125,16 @@ module Myfin
         end
 
         def apply_filters(rows)
+          apply_filters_except(rows)
+        end
+
+        def apply_filters_except(rows, excluded_key = nil)
           rows
-            .select { |row| keep_filter?(:years, row.date.year) }
-            .select { |row| keep_filter?(:months, row.date.month) }
-            .select { |row| keep_filter?(:types, row.type) }
-            .select { |row| keep_filter?(:wdg_categories, row.wdg) }
-            .select { |row| keep_filter?(:jpw_categories, row.jpw) }
+            .select { |row| excluded_key == :years || keep_filter?(:years, row.date.year) }
+            .select { |row| excluded_key == :months || keep_filter?(:months, row.date.month) }
+            .select { |row| excluded_key == :types || keep_filter?(:types, row.type) }
+            .select { |row| excluded_key == :wdg_categories || keep_filter?(:wdg_categories, row.wdg) }
+            .select { |row| excluded_key == :jpw_categories || keep_filter?(:jpw_categories, row.jpw) }
             .select { |row| filters.search.blank? || row_search_text(row).include?(filters.search) }
             .sort_by { |row| [ -row.date.jd, row.entry_id ] }
         end
@@ -209,6 +214,13 @@ module Myfin
             types: filters.selected_values(:types, available: filter_options.types),
             wdg_categories: filters.selected_values(:wdg_categories, available: filter_options.wdg_categories),
             jpw_categories: filters.selected_values(:jpw_categories, available: filter_options.jpw_categories)
+          }
+        end
+
+        def build_category_availability(rows)
+          {
+            wdg_categories: apply_filters_except(rows, :wdg_categories).map(&:wdg).uniq.to_set,
+            jpw_categories: apply_filters_except(rows, :jpw_categories).map(&:jpw).uniq.to_set
           }
         end
 

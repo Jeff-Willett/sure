@@ -58,12 +58,16 @@
             key: :wdg_categories,
             options: filter_options.wdg_categories.map { |category| [ category, category ] },
             selected: selected_filters[:wdg_categories],
+            available: report.category_availability[:wdg_categories],
+            explicit: params.key?(:wdg_categories),
             inline: true %>
       <%= render "myfin/transaction_explorers/slicer",
             label: t("myfin.transaction_explorer.filters.jpw"),
             key: :jpw_categories,
             options: filter_options.jpw_categories.map { |category| [ category, category ] },
             selected: selected_filters[:jpw_categories],
+            available: report.category_availability[:jpw_categories],
+            explicit: params.key?(:jpw_categories),
             inline: true %>
     </div>
   </details>

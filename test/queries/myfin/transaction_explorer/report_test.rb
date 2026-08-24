@@ -130,6 +130,39 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     }, report.selected_filters)
   end
 
+  test "category availability respects every filter except its own category group" do
+    create_entry(
+      entity_amounts: { @personal => 120 },
+      date: Date.new(2026, 8, 5),
+      name: "Camping living expense",
+      amount: 120,
+      wdg: "Other Living Expenses",
+      jpw: "Camping1"
+    )
+    create_entry(
+      entity_amounts: { @personal => 80 },
+      date: Date.new(2026, 8, 6),
+      name: "Camping RV expense",
+      amount: 80,
+      wdg: "Auto & Transport (RV)",
+      jpw: "Camping1"
+    )
+    create_entry(
+      entity_amounts: { @personal => 40 },
+      date: Date.new(2026, 8, 7),
+      name: "Unrelated shopping expense",
+      amount: 40,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+    filters = Myfin::TransactionExplorer::Filters.from_params(jpw_categories: [ "Camping1" ])
+
+    report = Myfin::TransactionExplorer::Report.call(user: @user, filters: filters)
+
+    assert_equal Set[ "Auto & Transport (RV)", "Other Living Expenses" ], report.category_availability[:wdg_categories]
+    assert_equal Set[ "Camping1" ], report.category_availability[:jpw_categories]
+  end
+
   test "returns metrics and a hierarchical rollup from the final rows" do
     create_entry(
       entity_amounts: { @personal => 120 },
