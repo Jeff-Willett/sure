@@ -13,6 +13,10 @@ import {
 const KEY_STEP = 16;
 
 export default class extends Controller {
+  #drag;
+  #onPointerMove;
+  #onPointerUp;
+
   static targets = ["colgroup", "handle"];
 
   connect() {

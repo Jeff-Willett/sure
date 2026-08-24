@@ -8,6 +8,16 @@ import {
 import { captureEditResult } from "utils/transaction_explorer_undo";
 
 export default class extends Controller {
+  #onBeforeRender;
+  #onBeforeStreamRender;
+  #onClick;
+  #onDocumentClick;
+  #onDoubleClick;
+  #onFocusIn;
+  #onFocusOut;
+  #onKeydown;
+  #onRender;
+
   static targets = ["announcement", "cell", "editToggle", "scroll"];
 
   static values = {
