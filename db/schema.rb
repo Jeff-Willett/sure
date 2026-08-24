@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_20_000300) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_24_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -1440,6 +1440,27 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_000300) do
     t.index ["spreadsheet_id"], name: "index_myfin_classification_exports_on_spreadsheet_id", unique: true, where: "(spreadsheet_id IS NOT NULL)"
   end
 
+  create_table "myfin_classification_changes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "action", null: false
+    t.uuid "actor_id"
+    t.uuid "category_scheme_id", null: false
+    t.datetime "created_at", null: false
+    t.uuid "family_id", null: false
+    t.uuid "new_category_id"
+    t.string "new_category_name"
+    t.uuid "previous_category_id"
+    t.string "previous_category_name"
+    t.uuid "reverted_change_id"
+    t.string "source", null: false
+    t.uuid "transaction_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "created_at"], name: "index_myfin_classification_changes_on_family_id_and_created_at"
+    t.index ["reverted_change_id"], name: "index_myfin_classification_changes_on_reverted_change_id"
+    t.index ["transaction_id", "category_scheme_id", "created_at"], name: "idx_myfin_classification_change_history"
+    t.check_constraint "action::text = ANY (ARRAY['edit'::character varying, 'revert'::character varying]::text[])", name: "chk_myfin_classification_changes_action"
+    t.check_constraint "source::text = 'transaction_explorer'::text", name: "chk_myfin_classification_changes_source"
+  end
+
   create_table "myfin_category_schemes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.uuid "entity_id"
@@ -2587,6 +2608,13 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_000300) do
   add_foreign_key "myfin_account_entities", "accounts", on_delete: :cascade
   add_foreign_key "myfin_account_entities", "myfin_entities", column: "entity_id", on_delete: :cascade
   add_foreign_key "myfin_classification_exports", "families", on_delete: :cascade
+  add_foreign_key "myfin_classification_changes", "families", on_delete: :cascade
+  add_foreign_key "myfin_classification_changes", "myfin_category_schemes", column: "category_scheme_id", on_delete: :restrict
+  add_foreign_key "myfin_classification_changes", "myfin_classification_changes", column: "reverted_change_id", on_delete: :nullify
+  add_foreign_key "myfin_classification_changes", "myfin_scheme_categories", column: "new_category_id", on_delete: :nullify
+  add_foreign_key "myfin_classification_changes", "myfin_scheme_categories", column: "previous_category_id", on_delete: :nullify
+  add_foreign_key "myfin_classification_changes", "transactions", on_delete: :cascade
+  add_foreign_key "myfin_classification_changes", "users", column: "actor_id", on_delete: :nullify
   add_foreign_key "myfin_category_schemes", "families", on_delete: :cascade
   add_foreign_key "myfin_category_schemes", "myfin_entities", column: "entity_id", on_delete: :nullify
   add_foreign_key "myfin_entities", "families", on_delete: :cascade

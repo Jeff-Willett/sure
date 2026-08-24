@@ -13,6 +13,9 @@ module Myfin
       class_name: "Myfin::TransactionClassification",
       inverse_of: :category_scheme,
       dependent: :restrict_with_error
+    has_many :classification_changes,
+      class_name: "Myfin::ClassificationChange",
+      inverse_of: :category_scheme
 
     validates :name, presence: true, uniqueness: { scope: :family_id }
     validate :entity_belongs_to_family

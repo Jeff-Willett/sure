@@ -19,6 +19,14 @@ module Myfin
       class_name: "Myfin::TransactionClassification",
       inverse_of: :scheme_category,
       dependent: :restrict_with_error
+    has_many :previous_classification_changes,
+      class_name: "Myfin::ClassificationChange",
+      foreign_key: :previous_category_id,
+      inverse_of: :previous_category
+    has_many :new_classification_changes,
+      class_name: "Myfin::ClassificationChange",
+      foreign_key: :new_category_id,
+      inverse_of: :new_category
 
     validates :name, presence: true, uniqueness: { scope: [ :category_scheme_id, :parent_id ] }
     validate :parent_belongs_to_category_scheme
