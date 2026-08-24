@@ -229,6 +229,60 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     assert_equal "Uncategorized", row.jpw
   end
 
+  test "exposes editor metadata and all active category options outside the current filters" do
+    wdg_scheme = @family.myfin_category_schemes.find_by!(name: "WDG")
+    jpw_scheme = @family.myfin_category_schemes.find_by!(name: "JPW")
+    wdg_category = wdg_scheme.scheme_categories.create!(name: "Report metadata WDG category")
+    jpw_category = jpw_scheme.scheme_categories.create!(name: "Report metadata JPW category")
+    available_only_in_editor = wdg_scheme.scheme_categories.create!(name: "Explorer-only WDG category")
+    wdg_scheme.scheme_categories.create!(name: "Inactive Explorer category", active: false)
+    entry = create_entry(
+      entity_amounts: { @personal => 120 },
+      date: Date.new(2026, 8, 5),
+      name: "Report editor metadata",
+      amount: 120,
+      wdg: wdg_category.name,
+      jpw: jpw_category.name
+    )
+
+    report = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      filters: Myfin::TransactionExplorer::Filters.from_params(wdg_categories: [ wdg_category.name ])
+    )
+
+    row = report.rows.find { |candidate| candidate.entry_id == entry.id }
+    assert_equal entry.transaction_id, row.transaction_id
+    assert_equal wdg_category.id, row.wdg_category_id
+    assert_equal jpw_category.id, row.jpw_category_id
+    assert row.editable
+    assert_includes report.category_options.fetch("WDG"), [ available_only_in_editor.id, available_only_in_editor.name ]
+    assert_not_includes report.category_options.fetch("WDG"), [ wdg_scheme.scheme_categories.find_by!(name: "Inactive Explorer category").id, "Inactive Explorer category" ]
+  end
+
+  test "marks rows from read-only accounts as not editable" do
+    wdg_scheme = @family.myfin_category_schemes.find_by!(name: "WDG")
+    jpw_scheme = @family.myfin_category_schemes.find_by!(name: "JPW")
+    wdg_category = wdg_scheme.scheme_categories.create!(name: "Read-only metadata WDG category")
+    jpw_category = jpw_scheme.scheme_categories.create!(name: "Read-only metadata JPW category")
+    create_entry(
+      entity_amounts: { @personal => 120 },
+      date: Date.new(2026, 8, 5),
+      name: "Report read-only editor metadata",
+      amount: 120,
+      account: accounts(:credit_card),
+      wdg: wdg_category.name,
+      jpw: jpw_category.name
+    )
+
+    report = Myfin::TransactionExplorer::Report.call(
+      user: users(:family_member),
+      filters: Myfin::TransactionExplorer::Filters.from_params({})
+    )
+
+    row = report.rows.find { |candidate| candidate.description == "Report read-only editor metadata" }
+    assert_not row.editable
+  end
+
   private
     def create_entry(entity_amounts:, date:, name:, amount:, account: accounts(:depository), kind: "standard", wdg: nil, jpw: nil)
       entry = account.entries.create!(

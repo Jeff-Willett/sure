@@ -1,0 +1,41 @@
+<%= turbo_stream.replace "transaction-explorer-shared-set" do %>
+  <div
+    id="transaction-explorer-shared-set"
+    class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-secondary bg-surface px-4 py-2.5 text-xs text-secondary"
+    data-testid="transaction-explorer-shared-set"
+    data-ledger-count="<%= @report.rows.size %>"
+    data-rollup-count="<%= @report.rows.size %>">
+    <span class="inline-flex h-1.5 w-1.5 rounded-full bg-success"></span>
+    <strong class="text-primary"><%= t("myfin.transaction_explorer.shared_set", count: @report.rows.size) %></strong>
+    <span class="text-subdued">Rollup <%= @report.rows.size %></span>
+    <span class="text-subdued">Ledger <%= @report.rows.size %></span>
+  </div>
+<% end %>
+
+<%= turbo_stream.replace "transaction-explorer-metrics" do %>
+  <div id="transaction-explorer-metrics"><%= render "myfin/transaction_explorers/metrics", metrics: @report.metrics %></div>
+<% end %>
+
+<%= turbo_stream.replace "transaction-explorer-rollup" do %>
+  <div id="transaction-explorer-rollup"><%= render "myfin/transaction_explorers/rollup", rollup: @report.rollup %></div>
+<% end %>
+
+<%= turbo_stream.replace "transaction-explorer-ledger" do %>
+  <div id="transaction-explorer-ledger"><%= render "myfin/transaction_explorers/ledger", rows: @visible_rows, total_count: @report.rows.size %></div>
+<% end %>
+
+<%= turbo_stream.replace "transaction-explorer-filters" do %>
+  <div id="transaction-explorer-filters"><%= render partial: "myfin/transaction_explorers/filters", locals: { report: @report } %></div>
+<% end %>
+
+<%= turbo_stream.append "notification-tray" do %>
+  <%= render "shared/notifications/notice", message: flash[:notice] %>
+<% end %>
+
+<%= turbo_stream.update "transaction-explorer-edit-result" do %>
+  <div
+    data-entry-id="<%= @entry_id %>"
+    data-scheme="<%= @scheme_name %>"
+    data-focus-fallback="<%= @focus_fallback_entry_id %>"
+    data-focus-fallback-entry-id="<%= @focus_fallback_entry_id %>"></div>
+<% end %>

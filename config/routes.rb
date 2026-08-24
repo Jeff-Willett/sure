@@ -9,6 +9,7 @@ Rails.application.routes.draw do
     resource :transaction_explorer, only: :show
     resources :entries, only: [] do
       resource :allocation, only: :update, controller: :entry_allocations
+      resource :transaction_explorer_classification, only: :update
       resources :classification_changes, only: :index
     end
     resources :classification_changes, only: :index do
