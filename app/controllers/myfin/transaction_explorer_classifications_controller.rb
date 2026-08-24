@@ -9,7 +9,7 @@ module Myfin
       return unless require_account_permission!(entry.account, :annotate)
 
       scheme = category_scheme
-      ClassificationEditor.call(
+      result = ClassificationEditor.call(
         entry: entry,
         scheme: scheme,
         target_category: category_for(scheme, :category_id, active: true),
@@ -17,6 +17,7 @@ module Myfin
         actor: Current.user,
         source: "transaction_explorer"
       )
+      @change = result.change
 
       @report = TransactionExplorersController.report_for(user: Current.user, params: params)
       @visible_rows = @report.rows.first(TransactionExplorersController::MAX_VISIBLE_ROWS)

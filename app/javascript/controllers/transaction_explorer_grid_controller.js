@@ -16,7 +16,9 @@ export default class extends Controller {
   connect() {
     this.active = null;
     this.stateBeforeRender = null;
+    this.undoNotices = new Map();
     this.#onClick = (event) => this.selectCell(event);
+    this.#onDocumentClick = (event) => this.handleDocumentClick(event);
     this.#onDoubleClick = (event) => this.openFromPointer(event);
     this.#onKeydown = (event) => this.handleKeydown(event);
     this.#onFocusIn = (event) => this.handleFocusIn(event);
@@ -32,6 +34,7 @@ export default class extends Controller {
     this.element.addEventListener("keydown", this.#onKeydown);
     this.element.addEventListener("focusin", this.#onFocusIn);
     this.element.addEventListener("focusout", this.#onFocusOut);
+    document.addEventListener("click", this.#onDocumentClick);
     document.addEventListener("turbo:before-render", this.#onBeforeRender);
     document.addEventListener("turbo:render", this.#onRender);
     document.addEventListener(
@@ -48,6 +51,8 @@ export default class extends Controller {
     this.element.removeEventListener("keydown", this.#onKeydown);
     this.element.removeEventListener("focusin", this.#onFocusIn);
     this.element.removeEventListener("focusout", this.#onFocusOut);
+    document.removeEventListener("click", this.#onDocumentClick);
+    this.undoNotices.clear();
     document.removeEventListener("turbo:before-render", this.#onBeforeRender);
     document.removeEventListener("turbo:render", this.#onRender);
     document.removeEventListener(
@@ -220,10 +225,7 @@ export default class extends Controller {
       return;
     }
 
-    if (
-      target !== "transaction-explorer-edit-result" ||
-      !this.stateBeforeRender
-    )
+    if (target !== "transaction-explorer-edit-result")
       return;
 
     const render = event.detail?.render;
@@ -232,10 +234,127 @@ export default class extends Controller {
     event.detail.render = (streamElement) => {
       const result = render(streamElement);
       Promise.resolve(result).finally(() =>
-        requestAnimationFrame(() => this.restoreRenderState()),
+        requestAnimationFrame(() => {
+          this.queueUndoNotice();
+          this.restoreRenderState();
+        }),
       );
       return result;
     };
+  }
+
+  handleDocumentClick(event) {
+    const undoButton = event.target.closest(
+      "[data-transaction-explorer-grid-undo]",
+    );
+    if (!undoButton) return;
+
+    const notice = undoButton.closest(
+      "[data-transaction-explorer-undo-notice]",
+    );
+    const changeId = notice?.dataset.changeId;
+    if (!notice || !changeId || !this.undoNotices.has(changeId)) return;
+
+    event.preventDefault();
+    this.submitUndo(changeId, notice, undoButton);
+  }
+
+  queueUndoNotice() {
+    const result = document.querySelector(
+      "#transaction-explorer-edit-result [data-change-id]",
+    );
+    if (!result) return;
+
+    const changeId = result.dataset.changeId;
+    if (!changeId || this.undoNotices.has(changeId)) return;
+
+    const template = result.querySelector(
+      "template[data-transaction-explorer-undo-template]",
+    );
+    const tray = document.querySelector("#notification-tray");
+    if (!template || !tray) return;
+
+    const fragment = template.content.cloneNode(true);
+    const notice = fragment.firstElementChild;
+    if (!notice) return;
+
+    notice.dataset.changeId = changeId;
+    notice.dataset.revertUrl = result.dataset.revertUrl;
+    notice.dataset.historyUrl = result.dataset.historyUrl;
+    notice.dataset.categoryLabel = result.dataset.categoryLabel;
+    notice.dataset.conflictTemplate = result.dataset.conflictTemplate;
+    tray.append(notice);
+    this.undoNotices.set(changeId, notice);
+
+    window.setTimeout(() => {
+      if (this.undoNotices.get(changeId) !== notice) return;
+
+      this.undoNotices.delete(changeId);
+      notice.remove();
+    }, 10000);
+  }
+
+  async submitUndo(changeId, notice, undoButton) {
+    if (notice.dataset.pending === "true") return;
+
+    notice.dataset.pending = "true";
+    undoButton.disabled = true;
+    undoButton.setAttribute("aria-busy", "true");
+
+    try {
+      const response = await fetch(notice.dataset.revertUrl, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')
+            ?.content,
+        },
+        credentials: "same-origin",
+      });
+
+      if (response.ok) {
+        this.undoNotices.delete(changeId);
+        notice.remove();
+        Turbo.visit(window.location.href, { action: "replace" });
+        return;
+      }
+
+      if (response.status === 409) {
+        const payload = await response.json();
+        this.showUndoConflict(notice, payload);
+        this.undoNotices.delete(changeId);
+        return;
+      }
+
+      throw new Error(`Undo failed with status ${response.status}`);
+    } catch (_error) {
+      delete notice.dataset.pending;
+      undoButton.disabled = false;
+      undoButton.removeAttribute("aria-busy");
+    }
+  }
+
+  showUndoConflict(notice, payload) {
+    const message = notice.querySelector(
+      "[data-transaction-explorer-undo-message]",
+    );
+    const undoButton = notice.querySelector(
+      "[data-transaction-explorer-grid-undo]",
+    );
+    const historyLink = notice.querySelector(
+      "[data-transaction-explorer-grid-history]",
+    );
+
+    if (message) {
+      message.textContent = (notice.dataset.conflictTemplate || "")
+        .replace("__CATEGORY__", payload.current_category);
+    }
+    if (undoButton) undoButton.remove();
+    if (historyLink) {
+      historyLink.href = payload.history_url || notice.dataset.historyUrl;
+      historyLink.classList.remove("hidden");
+    }
+    delete notice.dataset.pending;
   }
 
   handleFocusIn(event) {

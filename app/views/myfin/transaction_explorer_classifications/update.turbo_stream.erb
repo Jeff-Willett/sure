@@ -33,9 +33,9 @@
 <% end %>
 
 <%= turbo_stream.update "transaction-explorer-edit-result" do %>
-  <div
-    data-entry-id="<%= @entry_id %>"
-    data-scheme="<%= @scheme_name %>"
-    data-focus-fallback="<%= @focus_fallback_entry_id %>"
-    data-focus-fallback-entry-id="<%= @focus_fallback_entry_id %>"></div>
+  <%= render "myfin/transaction_explorers/edit_result",
+    entry_id: @entry_id,
+    scheme_name: @scheme_name,
+    focus_fallback_entry_id: @focus_fallback_entry_id,
+    change: @change %>
 <% end %>

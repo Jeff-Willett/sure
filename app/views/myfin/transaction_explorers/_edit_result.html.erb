@@ -1,0 +1,35 @@
+<%# locals: (entry_id:, scheme_name:, focus_fallback_entry_id:, change:) %>
+<% history_url = myfin_entry_classification_changes_path(entry_id) %>
+<% category_label = change.new_category_name || t("myfin.transaction_explorer.category_uncategorized") %>
+
+<div
+  data-entry-id="<%= entry_id %>"
+  data-scheme="<%= scheme_name %>"
+  data-focus-fallback="<%= focus_fallback_entry_id %>"
+  data-focus-fallback-entry-id="<%= focus_fallback_entry_id %>"
+  data-change-id="<%= change.id %>"
+  data-revert-url="<%= revert_myfin_classification_change_path(change) %>"
+  data-history-url="<%= history_url %>"
+  data-category-label="<%= category_label %>"
+  data-conflict-template="<%= t("myfin.transaction_explorer.undo_conflict", category: "__CATEGORY__") %>">
+  <template data-transaction-explorer-undo-template>
+    <div
+      class="relative flex items-center gap-3 rounded-lg bg-container p-4 shadow-border-xs"
+      data-transaction-explorer-undo-notice
+      data-change-id="<%= change.id %>">
+      <p class="grow text-sm font-medium text-primary" data-transaction-explorer-undo-message>
+        <%= t("myfin.transaction_explorer.undo_message", scheme: scheme_name, category: category_label) %>
+      </p>
+      <%= render DS::Button.new(
+        text: t("myfin.transaction_explorer.undo"),
+        variant: :ghost,
+        size: :sm,
+        type: :button,
+        data: { transaction_explorer_grid_undo: true }
+      ) %>
+      <%= link_to t("myfin.transaction_explorer.view_history"), history_url,
+        class: "hidden text-sm text-link hover:underline",
+        data: { transaction_explorer_grid_history: true, turbo_frame: "drawer" } %>
+    </div>
+  </template>
+</div>

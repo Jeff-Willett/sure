@@ -19,7 +19,7 @@ module Myfin
         .where(family: user.family)
         .joins(sure_transaction: :entry)
         .where(entries: { account_id: user.accessible_accounts.select(:id) })
-        .includes(:actor, :category_scheme, :previous_category, :new_category, :reverted_change)
+        .includes(:actor, :category_scheme, :previous_category, :new_category, :reverted_change, sure_transaction: :entry)
     end
     private_class_method :accessible_changes
 

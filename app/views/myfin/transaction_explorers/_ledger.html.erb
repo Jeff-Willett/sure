@@ -23,8 +23,9 @@
         text: t("myfin.transaction_explorer.recent_changes"),
         variant: :ghost,
         size: :sm,
-        type: :button,
-        data: { transaction_explorer_grid_target: "recentChanges" }
+        href: myfin_classification_changes_path,
+        method: :get,
+        frame: "drawer"
       ) %>
       <%= render DS::Button.new(
         text: t("myfin.transaction_explorer.reset_column_widths"),
@@ -87,6 +88,12 @@
               <td class="min-w-56 px-3 py-2 text-primary">
                 <%= row.description %>
                 <span class="mt-0.5 block text-xs text-secondary"><%= row.type %></span>
+                <% if row.editable %>
+                  <%= link_to t("myfin.transaction_explorer.history"),
+                    myfin_entry_classification_changes_path(row.entry_id),
+                    class: "mt-1 inline-block text-xs text-link hover:underline",
+                    data: { turbo_frame: "drawer", turbo_prefetch: false } %>
+                <% end %>
               </td>
               <td class="px-3 py-2 text-secondary"><%= row.account_name %></td>
               <td class="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums <%= row.amount.negative? ? "text-destructive" : "text-success" %>">

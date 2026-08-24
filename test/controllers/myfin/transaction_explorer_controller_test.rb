@@ -159,6 +159,76 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-entry-id='#{read_only_entry.id}'] td[data-scheme] [data-editor]", count: 0
   end
 
+  test "renders scoped history for editable rows and recent changes in the drawer" do
+    entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 10),
+      name: "History affordance expense",
+      amount: 45,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+
+    read_only_account = Account.create!(
+      family: @family,
+      owner: users(:family_member),
+      name: "History read-only checking",
+      balance: 0,
+      currency: "USD",
+      accountable_type: "Depository",
+      accountable: Depository.create!(subtype: "checking")
+    )
+    read_only_account.account_shares.create!(
+      user: @user,
+      permission: "read_only",
+      include_in_finances: true
+    )
+    read_only_account.myfin_account_entities.create!(entity: @personal)
+    read_only_entry = create_classified_entry(
+      account: read_only_account,
+      entity: @personal,
+      date: Date.new(2026, 8, 11),
+      name: "History hidden expense",
+      amount: 30,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+
+    get myfin_transaction_explorer_path
+
+    assert_response :success
+    assert_select "tr[data-entry-id='#{entry.id}'] a[href='#{myfin_entry_classification_changes_path(entry)}'][data-turbo-frame='drawer']", count: 1
+    assert_select "tr[data-entry-id='#{read_only_entry.id}'] a[href*='classification_changes']", count: 0
+    assert_select "form[action='#{myfin_classification_changes_path}'] button[data-turbo-frame='drawer']", count: 1
+  end
+
+  test "renders the committed change ID in the edit result for undo" do
+    scheme = @family.myfin_category_schemes.find_by!(name: "WDG")
+    old_category = scheme.scheme_categories.create!(name: "Undo original category")
+    new_category = scheme.scheme_categories.create!(name: "Undo updated category")
+    entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 12),
+      name: "Undo result expense",
+      amount: 55,
+      wdg: old_category.name,
+      jpw: "Groceries"
+    )
+
+    patch myfin_entry_transaction_explorer_classification_path(entry), params: {
+      scheme_id: scheme.id,
+      category_id: new_category.id,
+      expected_category_id: old_category.id
+    }, as: :turbo_stream
+
+    change = Myfin::ClassificationChange.order(:created_at, :id).last
+
+    assert_response :success
+    assert_select "turbo-stream[action='update'][target='transaction-explorer-edit-result'] template [data-entry-id='#{entry.id}'][data-scheme='WDG'][data-change-id='#{change.id}'][data-revert-url='#{revert_myfin_classification_change_path(change)}']", count: 1
+  end
+
   private
     def create_classified_entry(account:, entity:, date:, name:, amount:, wdg:, jpw:)
       entry = account.entries.create!(

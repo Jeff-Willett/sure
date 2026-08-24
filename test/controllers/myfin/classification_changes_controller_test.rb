@@ -38,6 +38,25 @@ class MyfinClassificationChangesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal "revert", Myfin::ClassificationChange.order(:created_at, :id).last.action
+
+    get myfin_entry_classification_changes_path(@entry)
+
+    assert_response :success
+    assert_select "turbo-frame#drawer li", count: 2
+    assert_select "turbo-frame#drawer li", text: /Dining.*Coffee/m, count: 1
+    assert_select "turbo-frame#drawer li", text: /Coffee.*Dining.*Reverted.*Reverts an earlier change/m, count: 1
+  end
+
+  test "returns the server-current value and history link for a superseded undo" do
+    post revert_myfin_classification_change_path(@change), as: :turbo_stream
+
+    assert_response :success
+
+    post revert_myfin_classification_change_path(@change), as: :json
+
+    assert_response :conflict
+    assert_equal "Dining", response.parsed_body.fetch("current_category")
+    assert_equal myfin_entry_classification_changes_path(@entry), response.parsed_body.fetch("history_url")
   end
 
   test "returns not found for inaccessible entry history" do

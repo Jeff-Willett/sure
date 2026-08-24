@@ -29,7 +29,12 @@ module Myfin
 
       head :ok
     rescue ClassificationEditor::StaleClassification, ClassificationEditor::InvalidRevert
-      head :conflict
+      current_category = @change.sure_transaction.myfin_classifications
+        .find_by(category_scheme: @change.category_scheme)&.scheme_category
+      render json: {
+        current_category: current_category&.name || I18n.t("myfin.transaction_explorer.category_uncategorized"),
+        history_url: myfin_entry_classification_changes_path(@change.sure_transaction.entry)
+      }, status: :conflict
     rescue ClassificationEditor::InvalidCategory
       head :unprocessable_entity
     end
