@@ -92,7 +92,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path, params: { search: "grid" }
 
     assert_response :success
-    assert_select "section[data-controller~='transaction-explorer-grid']", count: 1 do
+    assert_select "div[data-controller~='transaction-explorer-grid']", count: 1 do
       assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 7
       assert_select "thead th", count: 7 do |headers|
         headers.each do |header|
@@ -103,7 +103,13 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'][data-transaction-explorer-grid-target='cell'] form", count: 1
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form[action*='search=grid'] input[name='scheme_id']", count: 1
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form select[name='category_id'] option[value='']", text: "Uncategorized", count: 1
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form select[name='category_id'] option[value=''][selected]", count: 0
+      assert_select "th[data-column='date'][style*='transaction-explorer-date-offset']", count: 1
+      assert_select "th[data-column='entity'][style*='transaction-explorer-entity-offset']", count: 1
     end
+    assert_select "#transaction-explorer-ledger[data-controller~='transaction-explorer-grid']", count: 0
+    assert_select "tr[data-entry-id='#{entry.id}'] td:first-child[style*='transaction-explorer-date-offset']", count: 1
+    assert_select "tr[data-entry-id='#{entry.id}'] td:nth-child(2)[style*='transaction-explorer-entity-offset']", count: 1
     assert_select "button", text: "Edit categories", count: 1
     assert_select "button", text: "Recent changes", count: 1
     assert_select "button", text: "Reset column widths", count: 1

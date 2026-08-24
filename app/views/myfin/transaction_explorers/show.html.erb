@@ -25,7 +25,8 @@
 
   <div
     class="grid items-start border-b border-secondary bg-container @3xl:grid-cols-[var(--transaction-explorer-rollup-width,32%)_0.5rem_minmax(0,1fr)]"
-    data-controller="transaction-explorer-split">
+    data-controller="transaction-explorer-split transaction-explorer-grid transaction-explorer-columns"
+    data-transaction-explorer-grid-edit-mode-value="false">
     <div id="transaction-explorer-rollup">
       <%= render "rollup", rollup: @report.rollup %>
     </div>

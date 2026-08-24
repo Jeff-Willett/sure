@@ -30,7 +30,7 @@
         <%= form.hidden_field :expected_category_id, value: category_id %>
         <%= form.select :category_id,
           options,
-          { include_blank: t("myfin.transaction_explorer.category_uncategorized") },
+          { include_blank: t("myfin.transaction_explorer.category_uncategorized"), selected: category_id },
           {
             class: "form-field__input min-w-0",
             data: { transaction_explorer_grid_target: "select" },

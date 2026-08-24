@@ -2,9 +2,7 @@
 <% category_options ||= @report&.category_options || {} %>
 
 <section
-  class="min-w-0 bg-container"
-  data-controller="transaction-explorer-grid transaction-explorer-columns"
-  data-transaction-explorer-grid-edit-mode-value="false">
+  class="min-w-0 bg-container">
   <header class="flex min-h-12 flex-wrap items-center justify-between gap-2 border-b border-secondary px-4 py-3">
     <div class="flex items-center gap-2">
       <h2 class="text-sm font-semibold text-primary"><%= t("myfin.transaction_explorer.ledger_title") %></h2>
@@ -53,9 +51,12 @@
         <thead class="sticky top-0 z-10 bg-container text-left text-xs text-secondary shadow-border-xs">
           <tr>
             <% transaction_explorer_columns.each do |column| %>
+              <% sticky = column.key.in?(%w[date entity]) %>
+              <% sticky_offset = column.key == "date" ? "var(--transaction-explorer-date-offset, 0px)" : "var(--transaction-explorer-entity-offset, 140px)" if sticky %>
               <th
-                class="relative px-3 py-2 font-medium <%= column.key == "amount" ? "text-right" : "" %>"
-                data-column="<%= column.key %>">
+                class="relative px-3 py-2 font-medium <%= column.key == "amount" ? "text-right" : "" %> <%= "@3xl:sticky @3xl:z-20 @3xl:bg-container" if sticky %>"
+                data-column="<%= column.key %>"
+                <% if sticky %>style="left: <%= sticky_offset %>"<% end %>>
                 <span><%= t("myfin.transaction_explorer.columns.#{column.key}") %></span>
                 <button
                   type="button"

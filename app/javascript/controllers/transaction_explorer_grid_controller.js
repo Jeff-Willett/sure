@@ -24,6 +24,8 @@ export default class extends Controller {
     this.#onBeforeRender = () => this.captureRenderState();
     this.#onRender = () =>
       requestAnimationFrame(() => this.restoreRenderState());
+    this.#onBeforeStreamRender = (event) =>
+      this.handleBeforeStreamRender(event);
 
     this.element.addEventListener("click", this.#onClick);
     this.element.addEventListener("dblclick", this.#onDoubleClick);
@@ -32,6 +34,10 @@ export default class extends Controller {
     this.element.addEventListener("focusout", this.#onFocusOut);
     document.addEventListener("turbo:before-render", this.#onBeforeRender);
     document.addEventListener("turbo:render", this.#onRender);
+    document.addEventListener(
+      "turbo:before-stream-render",
+      this.#onBeforeStreamRender,
+    );
 
     this.#syncEditMode();
   }
@@ -44,6 +50,10 @@ export default class extends Controller {
     this.element.removeEventListener("focusout", this.#onFocusOut);
     document.removeEventListener("turbo:before-render", this.#onBeforeRender);
     document.removeEventListener("turbo:render", this.#onRender);
+    document.removeEventListener(
+      "turbo:before-stream-render",
+      this.#onBeforeStreamRender,
+    );
   }
 
   toggleEditMode(event) {
@@ -127,12 +137,20 @@ export default class extends Controller {
 
   captureRenderState() {
     const activeCell = this.#activeCell();
+    const cells = this.#cellIdentities();
     const openCell = this.cellTargets.find(
       (cell) => this.#editorFor(cell)?.hidden === false,
     );
 
     this.stateBeforeRender = {
       active: activeCell ? this.#identityForCell(activeCell) : this.active,
+      activeIndex: activeCell
+        ? cells.findIndex(
+            (cell) =>
+              cell.entryId === activeCell.dataset.entryId &&
+              cell.scheme === activeCell.dataset.scheme,
+          )
+        : -1,
       editMode: this.editModeValue,
       open: openCell ? this.#identityForCell(openCell) : null,
       scrollLeft: this.hasScrollTarget ? this.scrollTarget.scrollLeft : 0,
@@ -158,26 +176,27 @@ export default class extends Controller {
     const preferred = result
       ? { entryId: result.dataset.entryId, scheme: result.dataset.scheme }
       : state.active;
-    let identity = preferred && this.#findIdentity(preferred);
+    const exactIdentity = preferred && this.#findIdentity(preferred);
+    let identity = exactIdentity;
+    const movedOutOfFilter = Boolean(preferred && !exactIdentity);
 
-    if (!identity && preferred) {
+    if (movedOutOfFilter) {
       identity = focusFallback({
         cells: this.#cellIdentities(),
         previous: {
           ...preferred,
-          index: this.#cellIdentities().findIndex(
-            (cell) => cell.entryId === preferred.entryId,
-          ),
+          index: state.activeIndex,
         },
       });
-      if (identity && preferred.entryId !== identity.entryId) {
-        this.#announce(
-          this.#translation(
-            "row_moved_out_of_filter",
-            "This transaction moved out of the current filter.",
-          ),
-        );
-      }
+    }
+
+    if (movedOutOfFilter) {
+      this.#announce(
+        this.#translation(
+          "row_moved_out_of_filter",
+          "This transaction moved out of the current filter.",
+        ),
+      );
     }
 
     if (identity) {
@@ -192,6 +211,31 @@ export default class extends Controller {
     }
 
     this.stateBeforeRender = null;
+  }
+
+  handleBeforeStreamRender(event) {
+    const target = event.target?.getAttribute("target");
+    if (target === "transaction-explorer-ledger") {
+      this.captureRenderState();
+      return;
+    }
+
+    if (
+      target !== "transaction-explorer-edit-result" ||
+      !this.stateBeforeRender
+    )
+      return;
+
+    const render = event.detail?.render;
+    if (typeof render !== "function") return;
+
+    event.detail.render = (streamElement) => {
+      const result = render(streamElement);
+      Promise.resolve(result).finally(() =>
+        requestAnimationFrame(() => this.restoreRenderState()),
+      );
+      return result;
+    };
   }
 
   handleFocusIn(event) {

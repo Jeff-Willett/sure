@@ -27,6 +27,10 @@ export default class extends Controller {
     this.#endResize();
   }
 
+  colgroupTargetConnected() {
+    this.#applyWidths();
+  }
+
   start(event) {
     if (event.button !== 0) return;
 
