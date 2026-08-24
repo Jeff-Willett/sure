@@ -32,6 +32,7 @@ export default class extends Controller {
   }
 
   colgroupTargetConnected() {
+    this.widths ||= this.#readStoredWidths();
     this.#applyWidths();
   }
 
