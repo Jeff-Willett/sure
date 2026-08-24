@@ -67,6 +67,17 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[aria-label^='Reporting profile:']", count: 0
   end
 
+  test "keeps the category panel open after a category filter submission" do
+    get myfin_transaction_explorer_path, params: {
+      jpw_categories: [ "Renter Expenses" ]
+    }
+
+    assert_response :success
+    assert_select "details[open]", count: 1 do
+      assert_select "summary", text: /WDG and JPW categories/
+    end
+  end
+
   private
     def create_classified_entry(account:, entity:, date:, name:, amount:, wdg:, jpw:)
       entry = account.entries.create!(

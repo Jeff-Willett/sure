@@ -44,7 +44,7 @@
     </div>
   </div>
 
-  <details class="group border-t border-secondary bg-container-inset">
+  <details <%= "open" if params.key?(:wdg_categories) || params.key?(:jpw_categories) %> class="group border-t border-secondary bg-container-inset">
     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2 text-xs font-medium text-secondary transition-colors hover:bg-container-inset-hover hover:text-primary focus-ring motion-reduce:transition-none">
       <span class="inline-flex items-center gap-2">
         <%= icon("sliders-horizontal", size: "sm") %>
