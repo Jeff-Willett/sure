@@ -5,33 +5,55 @@ import {
   nextEditableCell,
   shouldOpenEditor,
 } from "utils/transaction_explorer_grid_state";
+import {
+  fillDownEdits,
+  parseClipboardText,
+  pasteEdits,
+  selectionRange,
+} from "utils/transaction_explorer_spreadsheet";
 import { captureEditResult } from "utils/transaction_explorer_undo";
 
 export default class extends Controller {
   #onBeforeRender;
   #onBeforeStreamRender;
   #onClick;
+  #onCopy;
   #onDocumentClick;
   #onDoubleClick;
   #onFocusIn;
   #onFocusOut;
   #onKeydown;
+  #onPaste;
   #onRender;
 
-  static targets = ["announcement", "cell", "editToggle", "scroll"];
+  static targets = [
+    "announcement",
+    "cell",
+    "editToggle",
+    "fillButton",
+    "scroll",
+  ];
 
   static values = {
+    batchUrl: String,
+    copiedMessage: String,
     editMode: { type: Boolean, default: false },
+    noChangesMessage: String,
+    updatedMessage: String,
   };
 
   connect() {
     this.active = null;
+    this.selectionAnchor = null;
+    this.selected = [];
     this.stateBeforeRender = null;
     this.undoNotices = new Map();
     this.#onClick = (event) => this.selectCell(event);
+    this.#onCopy = (event) => this.copySelection(event);
     this.#onDocumentClick = (event) => this.handleDocumentClick(event);
     this.#onDoubleClick = (event) => this.openFromPointer(event);
     this.#onKeydown = (event) => this.handleKeydown(event);
+    this.#onPaste = (event) => this.pasteSelection(event);
     this.#onFocusIn = (event) => this.handleFocusIn(event);
     this.#onFocusOut = (event) => this.handleFocusOut(event);
     this.#onBeforeRender = () => this.captureRenderState();
@@ -41,8 +63,10 @@ export default class extends Controller {
       this.handleBeforeStreamRender(event);
 
     this.element.addEventListener("click", this.#onClick);
+    this.element.addEventListener("copy", this.#onCopy);
     this.element.addEventListener("dblclick", this.#onDoubleClick);
     this.element.addEventListener("keydown", this.#onKeydown);
+    this.element.addEventListener("paste", this.#onPaste);
     this.element.addEventListener("focusin", this.#onFocusIn);
     this.element.addEventListener("focusout", this.#onFocusOut);
     document.addEventListener("click", this.#onDocumentClick);
@@ -58,8 +82,10 @@ export default class extends Controller {
 
   disconnect() {
     this.element.removeEventListener("click", this.#onClick);
+    this.element.removeEventListener("copy", this.#onCopy);
     this.element.removeEventListener("dblclick", this.#onDoubleClick);
     this.element.removeEventListener("keydown", this.#onKeydown);
+    this.element.removeEventListener("paste", this.#onPaste);
     this.element.removeEventListener("focusin", this.#onFocusIn);
     this.element.removeEventListener("focusout", this.#onFocusOut);
     document.removeEventListener("click", this.#onDocumentClick);
@@ -82,7 +108,18 @@ export default class extends Controller {
     const cell = this.#cellForEvent(event);
     if (!cell || !this.editModeValue || event.target.closest("form")) return;
 
+    if (event.shiftKey && this.selectionAnchor) {
+      this.selected = selectionRange(
+        this.#spreadsheetCells(),
+        this.selectionAnchor,
+        this.#cellRecord(cell),
+      );
+    } else {
+      this.selectionAnchor = this.#cellRecord(cell);
+      this.selected = [this.selectionAnchor];
+    }
     this.#setActive(cell);
+    this.#renderSelection();
   }
 
   openFromPointer(event) {
@@ -97,6 +134,15 @@ export default class extends Controller {
   handleKeydown(event) {
     const cell = this.#cellForEvent(event);
     if (!cell || !this.editModeValue) return;
+
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.key.toLocaleLowerCase() === "d"
+    ) {
+      event.preventDefault();
+      this.fillDown();
+      return;
+    }
 
     const editor = event.target.closest("[data-editor]");
     if (editor) {
@@ -134,6 +180,18 @@ export default class extends Controller {
 
     event.preventDefault();
     this.#focusIdentity(next);
+    if (event.shiftKey) {
+      this.selectionAnchor ||= this.#cellRecord(cell);
+      this.selected = selectionRange(
+        this.#spreadsheetCells(),
+        this.selectionAnchor,
+        this.#recordForIdentity(next),
+      );
+    } else {
+      this.selectionAnchor = this.#recordForIdentity(next);
+      this.selected = [this.selectionAnchor];
+    }
+    this.#renderSelection();
   }
 
   submitEditor(event) {
@@ -149,6 +207,70 @@ export default class extends Controller {
     if (!cell || cell.dataset.pending === "true") return;
 
     this.#submitCell(cell);
+  }
+
+  copySelection(event) {
+    if (!this.editModeValue || this.selected.length === 0) return;
+
+    const rows = [...new Set(this.selected.map((cell) => cell.entryId))];
+    const schemes = ["WDG", "JPW"].filter((scheme) =>
+      this.selected.some((cell) => cell.scheme === scheme),
+    );
+    const text = rows
+      .map((entryId) =>
+        schemes
+          .map(
+            (scheme) =>
+              this.selected.find(
+                (cell) => cell.entryId === entryId && cell.scheme === scheme,
+              )?.label || "",
+          )
+          .join("\t"),
+      )
+      .join("\n");
+    if (!text) return;
+
+    event.preventDefault();
+    event.clipboardData?.setData("text/plain", text);
+    this.#announce(
+      this.copiedMessageValue.replace("__COUNT__", this.selected.length),
+    );
+  }
+
+  pasteSelection(event) {
+    if (!this.editModeValue || !this.active) return;
+
+    try {
+      const edits = pasteEdits({
+        cells: this.#spreadsheetCells(),
+        target: this.#recordForIdentity(this.active),
+        matrix: parseClipboardText(
+          event.clipboardData?.getData("text/plain") || "",
+        ),
+        categories: this.#categoryMaps(),
+      });
+      event.preventDefault();
+      this.#submitBatch(edits);
+    } catch (error) {
+      event.preventDefault();
+      this.#announce(error.message);
+    }
+  }
+
+  fillDown(event) {
+    event?.preventDefault();
+    if (!this.editModeValue) return;
+
+    try {
+      this.#submitBatch(
+        fillDownEdits({
+          cells: this.#spreadsheetCells(),
+          selection: this.selected,
+        }),
+      );
+    } catch (error) {
+      this.#announce(error.message);
+    }
   }
 
   captureRenderState() {
@@ -169,6 +291,16 @@ export default class extends Controller {
         : -1,
       editMode: this.editModeValue,
       open: openCell ? this.#identityForCell(openCell) : null,
+      selected: this.selected.map(({ entryId, scheme }) => ({
+        entryId,
+        scheme,
+      })),
+      selectionAnchor: this.selectionAnchor
+        ? {
+            entryId: this.selectionAnchor.entryId,
+            scheme: this.selectionAnchor.scheme,
+          }
+        : null,
       scrollLeft: this.hasScrollTarget ? this.scrollTarget.scrollLeft : 0,
       scrollTop: this.hasScrollTarget ? this.scrollTarget.scrollTop : 0,
     };
@@ -180,6 +312,11 @@ export default class extends Controller {
 
     this.editModeValue = state.editMode;
     this.#syncEditMode();
+    this.selected = state.selected
+      .map((identity) => this.#recordForIdentity(identity))
+      .filter(Boolean);
+    this.selectionAnchor = this.#recordForIdentity(state.selectionAnchor);
+    this.#renderSelection();
 
     if (this.hasScrollTarget) {
       this.scrollTarget.scrollLeft = state.scrollLeft;
@@ -408,11 +545,21 @@ export default class extends Controller {
     if (!this.editModeValue) {
       cells.forEach((cell) => this.#cancelEditor(cell));
       this.active = null;
+      this.selectionAnchor = null;
+      this.selected = [];
+      this.#renderSelection();
       return;
     }
 
     const active = this.#activeCell() || cells[0];
-    if (active) this.#setActive(active, { focus: false });
+    if (active) {
+      this.#setActive(active, { focus: false });
+      if (this.selected.length === 0) {
+        this.selectionAnchor = this.#cellRecord(active);
+        this.selected = [this.selectionAnchor];
+      }
+      this.#renderSelection();
+    }
   }
 
   #setActive(cell, { focus = false, preventScroll = false } = {}) {
@@ -422,7 +569,6 @@ export default class extends Controller {
     this.cellTargets.forEach((candidate) => {
       const selected = candidate === cell;
       candidate.tabIndex = selected ? 0 : -1;
-      candidate.setAttribute("aria-selected", String(selected));
     });
     if (focus) cell.focus({ preventScroll });
   }
@@ -461,6 +607,116 @@ export default class extends Controller {
     select.value = cell.dataset.categoryId || "";
     editor.hidden = true;
     delete cell.dataset.open;
+  }
+
+  #spreadsheetCells() {
+    return this.cellTargets.map((cell) => this.#cellRecord(cell));
+  }
+
+  #cellRecord(cell) {
+    if (!cell) return null;
+    return {
+      entryId: cell.dataset.entryId,
+      scheme: cell.dataset.scheme,
+      categoryId: cell.dataset.categoryId || null,
+      label:
+        cell
+          .querySelector("[data-transaction-explorer-grid-label]")
+          ?.textContent?.trim() || "",
+      schemeId: this.#formFor(cell)?.querySelector("[name='scheme_id']")?.value,
+    };
+  }
+
+  #recordForIdentity(identity) {
+    if (!identity) return null;
+    const cell = this.cellTargets.find(
+      (candidate) =>
+        candidate.dataset.entryId === identity.entryId &&
+        candidate.dataset.scheme === identity.scheme,
+    );
+    return this.#cellRecord(cell);
+  }
+
+  #categoryMaps() {
+    const maps = { WDG: new Map(), JPW: new Map() };
+    this.cellTargets.forEach((cell) => {
+      const map = maps[cell.dataset.scheme];
+      if (!map) return;
+      cell.querySelectorAll("select option[value]").forEach((option) => {
+        if (option.value) map.set(option.textContent.trim(), option.value);
+      });
+    });
+    return maps;
+  }
+
+  #renderSelection() {
+    const selectedKeys = new Set(
+      this.selected.map((cell) => `${cell.entryId}:${cell.scheme}`),
+    );
+    this.cellTargets.forEach((cell) => {
+      const selected = selectedKeys.has(
+        `${cell.dataset.entryId}:${cell.dataset.scheme}`,
+      );
+      cell.dataset.rangeSelected = String(selected);
+      cell.setAttribute("aria-selected", String(selected));
+      cell.classList.toggle("outline", selected);
+      cell.classList.toggle("outline-2", selected);
+      cell.classList.toggle("outline-info", selected);
+      cell.classList.toggle("-outline-offset-2", selected);
+    });
+
+    const selectedRows = new Set(this.selected.map((cell) => cell.entryId));
+    this.fillButtonTargets.forEach((button) => {
+      button.disabled = selectedRows.size < 2;
+    });
+  }
+
+  async #submitBatch(edits) {
+    if (!edits.length || !this.hasBatchUrlValue) {
+      this.#announce(this.noChangesMessageValue);
+      return;
+    }
+
+    const cellsByKey = new Map(
+      this.cellTargets.map((cell) => [
+        `${cell.dataset.entryId}:${cell.dataset.scheme}`,
+        cell,
+      ]),
+    );
+    const payload = edits.map((edit) => {
+      const cell = cellsByKey.get(`${edit.entryId}:${edit.scheme}`);
+      if (cell) cell.dataset.pending = "true";
+      return {
+        entry_id: edit.entryId,
+        scheme_id: this.#cellRecord(cell)?.schemeId,
+        category_id: edit.categoryId,
+        expected_category_id: edit.expectedCategoryId,
+      };
+    });
+
+    try {
+      const response = await fetch(this.batchUrlValue, {
+        method: "PATCH",
+        headers: {
+          Accept: "text/vnd.turbo-stream.html",
+          "Content-Type": "application/json",
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')
+            ?.content,
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({ edits: payload }),
+      });
+      if (!response.ok)
+        throw new Error(`Batch save failed with status ${response.status}`);
+
+      Turbo.renderStreamMessage(await response.text());
+      this.#announce(
+        this.updatedMessageValue.replace("__COUNT__", payload.length),
+      );
+    } catch (error) {
+      this.#announce(error.message);
+      cellsByKey.forEach((cell) => delete cell.dataset.pending);
+    }
   }
 
   #submitCell(cell) {

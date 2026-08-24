@@ -26,7 +26,11 @@
   <div
     class="grid items-start border-b border-secondary bg-container @3xl:grid-cols-[var(--transaction-explorer-rollup-width,32%)_0.5rem_minmax(0,1fr)]"
     data-controller="transaction-explorer-split transaction-explorer-grid transaction-explorer-columns"
-    data-transaction-explorer-grid-edit-mode-value="false">
+    data-transaction-explorer-grid-edit-mode-value="false"
+    data-transaction-explorer-grid-batch-url-value="<%= myfin_transaction_explorer_classification_batch_path(request.query_parameters) %>"
+    data-transaction-explorer-grid-copied-message-value="<%= t("myfin.transaction_explorer.copied_cells", count: "__COUNT__") %>"
+    data-transaction-explorer-grid-no-changes-message-value="<%= t("myfin.transaction_explorer.no_batch_changes") %>"
+    data-transaction-explorer-grid-updated-message-value="<%= t("myfin.transaction_explorer.updated_cells", count: "__COUNT__") %>">
     <div id="transaction-explorer-rollup">
       <%= render "rollup", rollup: @report.rollup %>
     </div>

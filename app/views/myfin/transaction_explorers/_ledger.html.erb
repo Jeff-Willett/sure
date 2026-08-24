@@ -18,6 +18,16 @@
           aria: { pressed: "false" },
           data: { transaction_explorer_grid_target: "editToggle", action: "transaction-explorer-grid#toggleEditMode" }
         ) %>
+        <%= render DS::Button.new(
+          text: t("myfin.transaction_explorer.fill_down"),
+          variant: :ghost,
+          size: :sm,
+          type: :button,
+          disabled: true,
+          title: t("myfin.transaction_explorer.fill_down_shortcut"),
+          data: { transaction_explorer_grid_target: "fillButton", action: "transaction-explorer-grid#fillDown" }
+        ) %>
+        <span class="hidden text-xs text-subdued @5xl:inline"><%= t("myfin.transaction_explorer.spreadsheet_hint") %></span>
       <% end %>
       <%= render DS::Button.new(
         text: t("myfin.transaction_explorer.recent_changes"),
