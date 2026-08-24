@@ -45,7 +45,7 @@ Add `myfin_classification_changes` as an append-only table. Each row stores:
 - optional `reverted_change_id`
 - creation timestamp
 
-Foreign keys to category and user records may become null if those records are later removed. Snapshot names remain required so history stays understandable.
+Foreign keys to category and user records may become null if those records are later removed. Snapshot names are required whenever their corresponding category exists; a null category ID and null snapshot name together represent `Uncategorized`.
 
 Application code does not update or destroy audit rows. A revert creates a new change row whose new value is the selected historical value and whose `reverted_change_id` points to the change being restored. The current classification remains the fast read model used by reports.
 
