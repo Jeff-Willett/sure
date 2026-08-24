@@ -5,6 +5,7 @@ import {
   nextEditableCell,
   shouldOpenEditor,
 } from "utils/transaction_explorer_grid_state";
+import { captureEditResult } from "utils/transaction_explorer_undo";
 
 export default class extends Controller {
   static targets = ["announcement", "cell", "editToggle", "scroll"];
@@ -225,17 +226,17 @@ export default class extends Controller {
       return;
     }
 
-    if (target !== "transaction-explorer-edit-result")
-      return;
+    if (target !== "transaction-explorer-edit-result") return;
 
     const render = event.detail?.render;
     if (typeof render !== "function") return;
 
     event.detail.render = (streamElement) => {
+      const capturedResult = captureEditResult(streamElement);
       const result = render(streamElement);
       Promise.resolve(result).finally(() =>
         requestAnimationFrame(() => {
-          this.queueUndoNotice();
+          this.queueUndoNotice(capturedResult);
           this.restoreRenderState();
         }),
       );
@@ -259,16 +260,18 @@ export default class extends Controller {
     this.submitUndo(changeId, notice, undoButton);
   }
 
-  queueUndoNotice() {
-    const result = document.querySelector(
-      "#transaction-explorer-edit-result [data-change-id]",
-    );
-    if (!result) return;
+  queueUndoNotice(result = null) {
+    const capturedResult =
+      result ||
+      document.querySelector(
+        "#transaction-explorer-edit-result [data-change-id]",
+      );
+    if (!capturedResult) return;
 
-    const changeId = result.dataset.changeId;
+    const changeId = capturedResult.dataset.changeId;
     if (!changeId || this.undoNotices.has(changeId)) return;
 
-    const template = result.querySelector(
+    const template = capturedResult.querySelector(
       "template[data-transaction-explorer-undo-template]",
     );
     const tray = document.querySelector("#notification-tray");
@@ -279,10 +282,10 @@ export default class extends Controller {
     if (!notice) return;
 
     notice.dataset.changeId = changeId;
-    notice.dataset.revertUrl = result.dataset.revertUrl;
-    notice.dataset.historyUrl = result.dataset.historyUrl;
-    notice.dataset.categoryLabel = result.dataset.categoryLabel;
-    notice.dataset.conflictTemplate = result.dataset.conflictTemplate;
+    notice.dataset.revertUrl = capturedResult.dataset.revertUrl;
+    notice.dataset.historyUrl = capturedResult.dataset.historyUrl;
+    notice.dataset.categoryLabel = capturedResult.dataset.categoryLabel;
+    notice.dataset.conflictTemplate = capturedResult.dataset.conflictTemplate;
     tray.append(notice);
     this.undoNotices.set(changeId, notice);
 
@@ -346,8 +349,10 @@ export default class extends Controller {
     );
 
     if (message) {
-      message.textContent = (notice.dataset.conflictTemplate || "")
-        .replace("__CATEGORY__", payload.current_category);
+      message.textContent = (notice.dataset.conflictTemplate || "").replace(
+        "__CATEGORY__",
+        payload.current_category,
+      );
     }
     if (undoButton) undoButton.remove();
     if (historyLink) {
