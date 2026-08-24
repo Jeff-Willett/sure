@@ -113,6 +113,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-entry-id='#{entry.id}'] td:first-child[style*='transaction-explorer-date-offset']", count: 1
     assert_select "tr[data-entry-id='#{entry.id}'] td:nth-child(2)[style*='transaction-explorer-entity-offset']", count: 1
     assert_select "button", text: "Edit categories", count: 1
+    assert_select "span[data-transaction-explorer-grid-target='editStatus'][role='status'][hidden]", text: /Editing on/, count: 1
     assert_select "button[data-transaction-explorer-grid-target='undoButton'][aria-label='Undo'][disabled]", count: 1
     assert_select "button[data-transaction-explorer-grid-target='redoButton'][aria-label='Redo'][disabled]", count: 1
     assert_select "button[data-transaction-explorer-grid-target='fillButton'][disabled]", text: "Fill down", count: 1

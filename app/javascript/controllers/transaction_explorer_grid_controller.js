@@ -29,6 +29,7 @@ export default class extends Controller {
   static targets = [
     "announcement",
     "cell",
+    "editStatus",
     "editToggle",
     "fillButton",
     "redoButton",
@@ -108,6 +109,14 @@ export default class extends Controller {
     event?.preventDefault();
     this.editModeValue = !this.editModeValue;
     this.#syncEditMode();
+  }
+
+  editToggleTargetConnected() {
+    this.#syncEditModeIndicator();
+  }
+
+  editStatusTargetConnected() {
+    this.#syncEditModeIndicator();
   }
 
   undoButtonTargetConnected() {
@@ -547,10 +556,10 @@ export default class extends Controller {
   #syncHistoryButtons() {
     const pending = Boolean(this.historyOperation);
     this.undoButtonTargets.forEach((button) => {
-      button.disabled = pending || this.undoStack.length === 0;
+      button.disabled = pending || (this.undoStack?.length || 0) === 0;
     });
     this.redoButtonTargets.forEach((button) => {
-      button.disabled = pending || this.redoStack.length === 0;
+      button.disabled = pending || (this.redoStack?.length || 0) === 0;
     });
   }
 
@@ -642,9 +651,7 @@ export default class extends Controller {
     this.element.dataset.transactionExplorerGridEditModeValue = String(
       this.editModeValue,
     );
-    this.editToggleTargets.forEach((button) => {
-      button.setAttribute("aria-pressed", String(this.editModeValue));
-    });
+    this.#syncEditModeIndicator();
 
     const cells = this.cellTargets;
     cells.forEach((cell) => {
@@ -670,6 +677,16 @@ export default class extends Controller {
       }
       this.#renderSelection();
     }
+  }
+
+  #syncEditModeIndicator() {
+    this.editToggleTargets.forEach((button) => {
+      button.setAttribute("aria-pressed", String(this.editModeValue));
+      button.classList.toggle("bg-container-inset", this.editModeValue);
+    });
+    this.editStatusTargets.forEach((status) => {
+      status.hidden = !this.editModeValue;
+    });
   }
 
   #setActive(cell, { focus = false, preventScroll = false } = {}) {

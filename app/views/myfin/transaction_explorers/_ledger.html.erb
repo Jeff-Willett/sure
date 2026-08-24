@@ -18,6 +18,14 @@
           aria: { pressed: "false" },
           data: { transaction_explorer_grid_target: "editToggle", action: "transaction-explorer-grid#toggleEditMode" }
         ) %>
+        <span
+          hidden
+          class="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success"
+          role="status"
+          data-transaction-explorer-grid-target="editStatus">
+          <span class="size-1.5 rounded-full bg-success"></span>
+          <%= t("myfin.transaction_explorer.editing_on") %>
+        </span>
         <%= render DS::Button.new(
           icon: "undo-2",
           variant: :icon,
