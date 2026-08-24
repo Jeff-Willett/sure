@@ -13,6 +13,7 @@ class MyfinClassificationChangeTest < ActiveSupport::TestCase
     change = build_change(previous: @old_category, new: @new_category)
 
     assert change.save
+    assert_equal change, @transaction.myfin_classification_changes.find(change.id)
     assert_equal @old_category.name, change.previous_category_name
     assert_equal @new_category.name, change.new_category_name
     assert_not change.update(action: "revert")
@@ -103,7 +104,7 @@ class MyfinClassificationChangeTest < ActiveSupport::TestCase
     )
       Myfin::ClassificationChange.new(
         family: family,
-        transaction: @transaction,
+        sure_transaction: @transaction,
         category_scheme: category_scheme,
         actor: users(:family_admin),
         previous_category: previous,

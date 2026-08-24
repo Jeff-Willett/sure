@@ -6,7 +6,10 @@ module Myfin
     SOURCES = %w[transaction_explorer].freeze
 
     belongs_to :family
-    belongs_to :transaction, class_name: "Transaction"
+    belongs_to :sure_transaction,
+      class_name: "Transaction",
+      foreign_key: :transaction_id,
+      inverse_of: :myfin_classification_changes
     belongs_to :category_scheme,
       class_name: "Myfin::CategoryScheme",
       inverse_of: :classification_changes
@@ -60,14 +63,14 @@ module Myfin
           return
         end
 
-        category = public_send(id_attribute.delete_suffix("_id"))
+        category = public_send(id_attribute.to_s.delete_suffix("_id"))
         return if category.nil? || category.name == category_name
 
         errors.add(name_attribute, "must match the category name")
       end
 
       def transaction_belongs_to_change_family
-        return if transaction.nil? || family_id.nil? || transaction_family_id == family_id
+        return if sure_transaction.nil? || family_id.nil? || transaction_family_id == family_id
 
         errors.add(:transaction, "must belong to the change family")
       end
@@ -94,7 +97,7 @@ module Myfin
       end
 
       def transaction_family_id
-        transaction&.entry&.account&.family_id
+        sure_transaction&.entry&.account&.family_id
       end
 
       def reject_mutation

@@ -12,6 +12,10 @@ class Transaction < ApplicationRecord
            foreign_key: :transaction_id,
            inverse_of: :sure_transaction,
            dependent: :destroy
+  has_many :myfin_classification_changes,
+           class_name: "Myfin::ClassificationChange",
+           foreign_key: :transaction_id,
+           inverse_of: :sure_transaction
 
   # File attachments (receipts, invoices, etc.) using Active Storage
   # Supports images (JPEG, PNG, GIF, WebP) and PDFs up to 10MB each
