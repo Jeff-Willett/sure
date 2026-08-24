@@ -8,22 +8,22 @@
       data: { controller: "auto-submit-form" },
       class: "border-y border-secondary bg-container" do %>
   <div class="grid gap-px bg-secondary sm:grid-cols-2 @6xl:grid-cols-[1.15fr_0.72fr_1fr_0.95fr_1.05fr]">
-    <%= render "slicer",
+    <%= render "myfin/transaction_explorers/slicer",
           label: t("myfin.transaction_explorer.filters.entities"),
           key: :entity_ids,
           options: filter_options.entities,
           selected: selected_filters[:entity_ids] %>
-    <%= render "slicer",
+    <%= render "myfin/transaction_explorers/slicer",
           label: t("myfin.transaction_explorer.filters.years"),
           key: :years,
           options: filter_options.years.map { |year| [ year, year ] },
           selected: selected_filters[:years] %>
-    <%= render "slicer",
+    <%= render "myfin/transaction_explorers/slicer",
           label: t("myfin.transaction_explorer.filters.months"),
           key: :months,
           options: filter_options.months.map { |month| [ month, Date::ABBR_MONTHNAMES.fetch(month) ] },
           selected: selected_filters[:months] %>
-    <%= render "slicer",
+    <%= render "myfin/transaction_explorers/slicer",
           label: t("myfin.transaction_explorer.filters.types"),
           key: :types,
           options: filter_options.types.map { |type| [ type, type ] },
@@ -53,13 +53,13 @@
       <%= icon("chevron-down", size: "sm", class: "transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none") %>
     </summary>
     <div class="grid border-t border-secondary @4xl:grid-cols-2 @4xl:divide-x @4xl:divide-secondary">
-      <%= render "slicer",
+      <%= render "myfin/transaction_explorers/slicer",
             label: t("myfin.transaction_explorer.filters.wdg"),
             key: :wdg_categories,
             options: filter_options.wdg_categories.map { |category| [ category, category ] },
             selected: selected_filters[:wdg_categories],
             inline: true %>
-      <%= render "slicer",
+      <%= render "myfin/transaction_explorers/slicer",
             label: t("myfin.transaction_explorer.filters.jpw"),
             key: :jpw_categories,
             options: filter_options.jpw_categories.map { |category| [ category, category ] },
