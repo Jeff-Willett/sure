@@ -11,6 +11,9 @@ pin_all_from "app/javascript/utils", under: "utils", to: "utils"
 pin "utils/sankey_zoom", to: "utils/sankey_zoom.mjs"
 pin "utils/transactions_filter_url", to: "utils/transactions_filter_url.mjs"
 pin "utils/slicer_selection", to: "utils/slicer_selection.mjs"
+pin "utils/transaction_explorer_column_widths", to: "utils/transaction_explorer_column_widths.mjs"
+pin "utils/transaction_explorer_grid_state", to: "utils/transaction_explorer_grid_state.mjs"
+pin "utils/transaction_explorer_undo", to: "utils/transaction_explorer_undo.mjs"
 pin "@github/hotkey", to: "@github--hotkey.js" # @3.1.1
 pin "@simonwep/pickr", to: "@simonwep--pickr.js" # @1.9.1
 
