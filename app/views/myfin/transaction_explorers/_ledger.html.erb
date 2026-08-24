@@ -1,40 +1,88 @@
-<%# locals: (rows:, total_count:) %>
+<%# locals: (rows:, total_count:, category_options: nil) %>
+<% category_options ||= @report&.category_options || {} %>
 
-<section class="min-w-0 bg-container">
-  <header class="flex min-h-12 items-center justify-between border-b border-secondary px-4 py-3">
-    <h2 class="text-sm font-semibold text-primary"><%= t("myfin.transaction_explorer.ledger_title") %></h2>
-    <span class="text-xs text-secondary"><%= t("myfin.transaction_explorer.showing", shown: rows.size, total: total_count) %></span>
+<section
+  class="min-w-0 bg-container"
+  data-controller="transaction-explorer-grid transaction-explorer-columns"
+  data-transaction-explorer-grid-edit-mode-value="false">
+  <header class="flex min-h-12 flex-wrap items-center justify-between gap-2 border-b border-secondary px-4 py-3">
+    <div class="flex items-center gap-2">
+      <h2 class="text-sm font-semibold text-primary"><%= t("myfin.transaction_explorer.ledger_title") %></h2>
+      <span class="text-xs text-secondary"><%= t("myfin.transaction_explorer.showing", shown: rows.size, total: total_count) %></span>
+    </div>
+    <div class="flex items-center gap-1">
+      <% if rows.any?(&:editable) %>
+        <%= render DS::Button.new(
+          text: t("myfin.transaction_explorer.edit_categories"),
+          variant: :ghost,
+          size: :sm,
+          type: :button,
+          aria: { pressed: "false" },
+          data: { transaction_explorer_grid_target: "editToggle", action: "transaction-explorer-grid#toggleEditMode" }
+        ) %>
+      <% end %>
+      <%= render DS::Button.new(
+        text: t("myfin.transaction_explorer.recent_changes"),
+        variant: :ghost,
+        size: :sm,
+        type: :button,
+        data: { transaction_explorer_grid_target: "recentChanges" }
+      ) %>
+      <%= render DS::Button.new(
+        text: t("myfin.transaction_explorer.reset_column_widths"),
+        variant: :ghost,
+        size: :sm,
+        type: :button,
+        data: { action: "transaction-explorer-columns#reset" }
+      ) %>
+    </div>
   </header>
 
   <% if rows.empty? %>
     <p class="py-12 text-center text-sm text-secondary"><%= t("myfin.transaction_explorer.empty") %></p>
   <% else %>
-    <div class="table-scroll max-h-[calc(100vh-10rem)] overflow-auto [--table-scroll-bg:var(--color-container)]">
-      <table class="w-full min-w-[920px] text-sm">
+    <div
+      class="table-scroll max-h-[calc(100vh-10rem)] overflow-auto [--table-scroll-bg:var(--color-container)]"
+      data-transaction-explorer-grid-target="scroll">
+      <table class="w-full min-w-[1490px] text-sm" data-transaction-explorer-grid-target="table">
+        <colgroup data-transaction-explorer-columns-target="colgroup">
+          <% transaction_explorer_columns.each do |column| %>
+            <col data-column="<%= column.key %>" style="width: <%= column.default_width %>px">
+          <% end %>
+        </colgroup>
         <thead class="sticky top-0 z-10 bg-container text-left text-xs text-secondary shadow-border-xs">
           <tr>
-            <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.date") %></th>
-            <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.entity") %></th>
-            <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.wdg") %></th>
-            <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.jpw") %></th>
-            <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.description") %></th>
-            <th class="px-3 py-2 font-medium"><%= t("myfin.transaction_explorer.columns.account") %></th>
-            <th class="px-3 py-2 text-right font-medium"><%= t("myfin.transaction_explorer.columns.amount") %></th>
+            <% transaction_explorer_columns.each do |column| %>
+              <th
+                class="relative px-3 py-2 font-medium <%= column.key == "amount" ? "text-right" : "" %>"
+                data-column="<%= column.key %>">
+                <span><%= t("myfin.transaction_explorer.columns.#{column.key}") %></span>
+                <button
+                  type="button"
+                  class="absolute inset-y-0 right-0 w-2 cursor-col-resize border-0 bg-transparent p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-info"
+                  aria-label="<%= t("myfin.transaction_explorer.resize_column", column: t("myfin.transaction_explorer.columns.#{column.key}")) %>"
+                  aria-orientation="vertical"
+                  tabindex="0"
+                  data-column="<%= column.key %>"
+                  data-transaction-explorer-columns-target="handle"
+                  data-action="pointerdown->transaction-explorer-columns#start keydown->transaction-explorer-columns#keydown dblclick->transaction-explorer-columns#resetColumn"></button>
+              </th>
+            <% end %>
           </tr>
         </thead>
         <tbody>
           <% rows.each do |row| %>
             <tr class="border-b border-tertiary transition-colors hover:bg-surface-hover motion-reduce:transition-none" data-entry-id="<%= row.entry_id %>">
-              <td class="whitespace-nowrap px-3 py-2.5 text-secondary"><%= l(row.date, format: :short) %></td>
-              <td class="px-3 py-2">
+              <td class="whitespace-nowrap px-3 py-2.5 text-secondary @3xl:sticky @3xl:left-0 @3xl:z-10 @3xl:bg-container" style="left: var(--transaction-explorer-date-offset, 0px)"><%= l(row.date, format: :short) %></td>
+              <td class="px-3 py-2 @3xl:sticky @3xl:z-10 @3xl:bg-container" style="left: var(--transaction-explorer-entity-offset, 140px)">
                 <div class="flex flex-wrap gap-1">
                   <% row.entity_names.each do |entity_name| %>
                     <span class="rounded-md bg-container-inset px-2 py-0.5 text-xs text-secondary"><%= entity_name %></span>
                   <% end %>
                 </div>
               </td>
-              <td class="px-3 py-2 text-primary"><%= row.wdg %></td>
-              <td class="px-3 py-2 text-primary"><%= row.jpw %></td>
+              <%= render "myfin/transaction_explorers/category_cell", row: row, scheme: "WDG", category_options: category_options %>
+              <%= render "myfin/transaction_explorers/category_cell", row: row, scheme: "JPW", category_options: category_options %>
               <td class="min-w-56 px-3 py-2 text-primary">
                 <%= row.description %>
                 <span class="mt-0.5 block text-xs text-secondary"><%= row.type %></span>
@@ -49,4 +97,6 @@
       </table>
     </div>
   <% end %>
+
+  <p class="sr-only" aria-live="polite" data-transaction-explorer-grid-target="announcement"></p>
 </section>

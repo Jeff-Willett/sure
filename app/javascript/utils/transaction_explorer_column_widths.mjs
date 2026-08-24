@@ -4,7 +4,11 @@ export const TRANSACTION_EXPLORER_COLUMN_WIDTHS_KEY =
 export const TRANSACTION_EXPLORER_COLUMNS = {
   date: { defaultWidth: 140, minWidth: 96 },
   entity: { defaultWidth: 260, minWidth: 180 },
+  wdg: { defaultWidth: 180, minWidth: 140 },
+  jpw: { defaultWidth: 180, minWidth: 140 },
   description: { defaultWidth: 360, minWidth: 220 },
+  account: { defaultWidth: 220, minWidth: 160 },
+  amount: { defaultWidth: 150, minWidth: 120 },
 }
 
 const toPositiveInteger = (value) => {

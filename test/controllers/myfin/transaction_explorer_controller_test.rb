@@ -78,6 +78,81 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "renders a semantic resizable category grid with edit controls" do
+    entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 7),
+      name: "Resizable grid expense",
+      amount: 120,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+
+    get myfin_transaction_explorer_path, params: { search: "grid" }
+
+    assert_response :success
+    assert_select "section[data-controller~='transaction-explorer-grid']", count: 1 do
+      assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 7
+      assert_select "thead th", count: 7 do |headers|
+        headers.each do |header|
+          assert_select header, "[data-transaction-explorer-columns-target='handle'][tabindex='0']", count: 1
+        end
+      end
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'][data-transaction-explorer-grid-target='cell'] form", count: 1
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'][data-transaction-explorer-grid-target='cell'] form", count: 1
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form[action*='search=grid'] input[name='scheme_id']", count: 1
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form select[name='category_id'] option[value='']", text: "Uncategorized", count: 1
+    end
+    assert_select "button", text: "Edit categories", count: 1
+    assert_select "button", text: "Recent changes", count: 1
+    assert_select "button", text: "Reset column widths", count: 1
+  end
+
+  test "renders category editors only for editable rows" do
+    read_only_account = Account.create!(
+      family: @family,
+      owner: users(:family_member),
+      name: "Read-only checking",
+      balance: 0,
+      currency: "USD",
+      accountable_type: "Depository",
+      accountable: Depository.create!(subtype: "checking")
+    )
+    read_only_account.account_shares.create!(
+      user: @user,
+      permission: "read_only",
+      include_in_finances: true
+    )
+    read_only_account.myfin_account_entities.create!(entity: @personal)
+
+    editable_entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 8),
+      name: "Editable grid expense",
+      amount: 45,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+    read_only_entry = create_classified_entry(
+      account: read_only_account,
+      entity: @personal,
+      date: Date.new(2026, 8, 9),
+      name: "Read-only grid expense",
+      amount: 30,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+
+    get myfin_transaction_explorer_path
+
+    assert_response :success
+    assert_select "tr[data-entry-id='#{editable_entry.id}'] td[data-scheme] form", count: 2
+    assert_select "tr[data-entry-id='#{read_only_entry.id}'] td[data-scheme] form", count: 0
+    assert_select "tr[data-entry-id='#{read_only_entry.id}'] td[data-scheme] [data-editor]", count: 0
+  end
+
   private
     def create_classified_entry(account:, entity:, date:, name:, amount:, wdg:, jpw:)
       entry = account.entries.create!(
