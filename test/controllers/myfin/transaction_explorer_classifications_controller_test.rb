@@ -106,6 +106,24 @@ class Myfin::TransactionExplorerClassificationsControllerTest < ActionDispatch::
     assert_response :unprocessable_entity
   end
 
+  test "renders every target used by the classification update response" do
+    ensure_tailwind_build
+
+    get myfin_transaction_explorer_path
+
+    assert_response :success
+    %w[
+      transaction-explorer-shared-set
+      transaction-explorer-metrics
+      transaction-explorer-rollup
+      transaction-explorer-ledger
+      transaction-explorer-filters
+      transaction-explorer-edit-result
+    ].each do |target|
+      assert_select "##{target}", count: 1
+    end
+  end
+
   private
     def create_entry(wdg:)
       entry = accounts(:depository).entries.create!(

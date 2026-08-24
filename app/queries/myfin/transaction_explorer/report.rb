@@ -60,7 +60,7 @@ module Myfin
             .joins(:myfin_allocations)
             .where(myfin_entry_allocations: { entity_id: all_entity_ids })
             .distinct
-            .includes(:account, { myfin_allocations: :entity }, entryable: { myfin_classifications: [ :category_scheme, :scheme_category ] })
+            .includes(account: :account_shares, myfin_allocations: :entity, entryable: { myfin_classifications: [ :category_scheme, :scheme_category ] })
             .to_a
         end
 

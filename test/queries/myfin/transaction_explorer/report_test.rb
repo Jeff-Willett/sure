@@ -283,6 +283,33 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     assert_not row.editable
   end
 
+  test "loads shared-account permissions once for multiple account rows" do
+    member = users(:family_member)
+    accounts(:investment).share_with!(member, permission: "read_write")
+    entries = [ accounts(:depository), accounts(:credit_card), accounts(:investment) ].map.with_index do |account, index|
+      create_entry(
+        entity_amounts: { @personal => index + 1 },
+        date: Date.new(2026, 8, index + 1),
+        name: "Report shared-account permission #{index}",
+        amount: index + 1,
+        account: account
+      )
+    end
+
+    ActiveRecord::Base.connection.clear_query_cache
+    queries = capture_sql_queries do
+      report = Myfin::TransactionExplorer::Report.call(
+        user: member,
+        filters: Myfin::TransactionExplorer::Filters.from_params({})
+      )
+
+      assert_equal entries.map(&:id).sort, report.rows.map(&:entry_id).sort
+    end
+
+    account_share_loads = queries.count { |sql| sql.match?(/SELECT "account_shares"\.\* FROM "account_shares"/) }
+    assert_equal 1, account_share_loads
+  end
+
   private
     def create_entry(entity_amounts:, date:, name:, amount:, account: accounts(:depository), kind: "standard", wdg: nil, jpw: nil)
       entry = account.entries.create!(

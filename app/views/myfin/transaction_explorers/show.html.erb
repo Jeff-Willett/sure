@@ -3,9 +3,12 @@
 <div class="@container pb-8 lg:-mx-10">
   <h1 class="sr-only"><%= t("myfin.transaction_explorer.title") %></h1>
 
-  <%= render "filters", report: @report %>
+  <div id="transaction-explorer-filters">
+    <%= render "filters", report: @report %>
+  </div>
 
   <div
+    id="transaction-explorer-shared-set"
     class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-secondary bg-surface px-4 py-2.5 text-xs text-secondary"
     data-testid="transaction-explorer-shared-set"
     data-ledger-count="<%= @report.rows.size %>"
@@ -16,12 +19,16 @@
     <span class="text-subdued">Ledger <%= @report.rows.size %></span>
   </div>
 
-  <%= render "metrics", metrics: @report.metrics %>
+  <div id="transaction-explorer-metrics">
+    <%= render "metrics", metrics: @report.metrics %>
+  </div>
 
   <div
     class="grid items-start border-b border-secondary bg-container @3xl:grid-cols-[var(--transaction-explorer-rollup-width,32%)_0.5rem_minmax(0,1fr)]"
     data-controller="transaction-explorer-split">
-    <%= render "rollup", rollup: @report.rollup %>
+    <div id="transaction-explorer-rollup">
+      <%= render "rollup", rollup: @report.rollup %>
+    </div>
     <div
       class="group relative hidden h-full cursor-col-resize bg-container @3xl:block"
       role="separator"
@@ -32,6 +39,10 @@
       data-action="pointerdown->transaction-explorer-split#start keydown->transaction-explorer-split#keydown dblclick->transaction-explorer-split#reset">
       <span class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-secondary transition-colors group-hover:bg-info group-focus-visible:bg-info motion-reduce:transition-none"></span>
     </div>
-    <%= render "ledger", rows: @visible_rows, total_count: @report.rows.size %>
+    <div id="transaction-explorer-ledger">
+      <%= render "ledger", rows: @visible_rows, total_count: @report.rows.size %>
+    </div>
   </div>
+
+  <div id="transaction-explorer-edit-result" hidden></div>
 </div>
