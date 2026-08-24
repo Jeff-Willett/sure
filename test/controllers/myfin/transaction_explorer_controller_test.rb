@@ -113,6 +113,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-entry-id='#{entry.id}'] td:first-child[style*='transaction-explorer-date-offset']", count: 1
     assert_select "tr[data-entry-id='#{entry.id}'] td:nth-child(2)[style*='transaction-explorer-entity-offset']", count: 1
     assert_select "button", text: "Edit categories", count: 1
+    assert_select "button[data-transaction-explorer-grid-target='undoButton'][aria-label='Undo'][disabled]", count: 1
+    assert_select "button[data-transaction-explorer-grid-target='redoButton'][aria-label='Redo'][disabled]", count: 1
     assert_select "button[data-transaction-explorer-grid-target='fillButton'][disabled]", text: "Fill down", count: 1
     assert_select "div[data-transaction-explorer-grid-batch-url-value='#{myfin_transaction_explorer_classification_batch_path(search: "grid")}']", count: 1
     assert_select "span", text: /Shift-select.*Copy\/Paste/, count: 1
@@ -231,7 +233,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     change = Myfin::ClassificationChange.order(:created_at, :id).last
 
     assert_response :success
-    assert_select "turbo-stream[action='update'][target='transaction-explorer-edit-result'] template [data-entry-id='#{entry.id}'][data-scheme='WDG'][data-change-id='#{change.id}'][data-revert-url='#{revert_myfin_classification_change_path(change)}']", count: 1
+    assert_select "turbo-stream[action='update'][target='transaction-explorer-edit-result'] template [data-entry-id='#{entry.id}'][data-scheme='WDG'][data-change-id='#{change.id}'][data-scheme-id='#{scheme.id}'][data-previous-category-id='#{old_category.id}'][data-new-category-id='#{new_category.id}'][data-revert-url='#{revert_myfin_classification_change_path(change)}']", count: 1
   end
 
   private

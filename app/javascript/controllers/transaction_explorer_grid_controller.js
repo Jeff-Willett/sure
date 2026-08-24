@@ -31,7 +31,9 @@ export default class extends Controller {
     "cell",
     "editToggle",
     "fillButton",
+    "redoButton",
     "scroll",
+    "undoButton",
   ];
 
   static values = {
@@ -48,6 +50,9 @@ export default class extends Controller {
     this.selected = [];
     this.stateBeforeRender = null;
     this.undoNotices = new Map();
+    this.undoStack = [];
+    this.redoStack = [];
+    this.historyOperation = null;
     this.#onClick = (event) => this.selectCell(event);
     this.#onCopy = (event) => this.copySelection(event);
     this.#onDocumentClick = (event) => this.handleDocumentClick(event);
@@ -78,6 +83,7 @@ export default class extends Controller {
     );
 
     this.#syncEditMode();
+    this.#syncHistoryButtons();
   }
 
   disconnect() {
@@ -102,6 +108,24 @@ export default class extends Controller {
     event?.preventDefault();
     this.editModeValue = !this.editModeValue;
     this.#syncEditMode();
+  }
+
+  undoButtonTargetConnected() {
+    this.#syncHistoryButtons();
+  }
+
+  redoButtonTargetConnected() {
+    this.#syncHistoryButtons();
+  }
+
+  undoHistory(event) {
+    event?.preventDefault();
+    this.#applyHistory("undo");
+  }
+
+  redoHistory(event) {
+    event?.preventDefault();
+    this.#applyHistory("redo");
   }
 
   selectCell(event) {
@@ -383,7 +407,12 @@ export default class extends Controller {
       const result = render(streamElement);
       Promise.resolve(result).finally(() =>
         requestAnimationFrame(() => {
-          this.queueUndoNotice(capturedResult);
+          if (this.historyOperation) {
+            this.#completeHistoryOperation();
+          } else {
+            this.#recordHistory(capturedResult);
+            this.queueUndoNotice(capturedResult);
+          }
           this.restoreRenderState();
         }),
       );
@@ -442,6 +471,87 @@ export default class extends Controller {
       this.undoNotices.delete(changeId);
       notice.remove();
     }, 10000);
+  }
+
+  #recordHistory(result) {
+    if (!result?.dataset.changeId || !result.dataset.updateUrl) return;
+
+    this.undoStack.push({
+      changeId: result.dataset.changeId,
+      schemeId: result.dataset.schemeId,
+      previousCategoryId: result.dataset.previousCategoryId || "",
+      newCategoryId: result.dataset.newCategoryId || "",
+      updateUrl: result.dataset.updateUrl,
+    });
+    this.redoStack = [];
+    this.#syncHistoryButtons();
+  }
+
+  async #applyHistory(direction) {
+    if (this.historyOperation) return;
+
+    const source = direction === "undo" ? this.undoStack : this.redoStack;
+    const action = source.at(-1);
+    if (!action) return;
+
+    const undoing = direction === "undo";
+    const categoryId = undoing
+      ? action.previousCategoryId
+      : action.newCategoryId;
+    const expectedCategoryId = undoing
+      ? action.newCategoryId
+      : action.previousCategoryId;
+    this.historyOperation = { direction, action };
+    this.#syncHistoryButtons();
+
+    try {
+      const body = new FormData();
+      body.set("scheme_id", action.schemeId);
+      body.set("category_id", categoryId);
+      body.set("expected_category_id", expectedCategoryId);
+      const response = await fetch(action.updateUrl, {
+        method: "PATCH",
+        headers: {
+          Accept: "text/vnd.turbo-stream.html",
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')
+            ?.content,
+        },
+        credentials: "same-origin",
+        body,
+      });
+      if (!response.ok)
+        throw new Error(`${direction} failed with status ${response.status}`);
+
+      Turbo.renderStreamMessage(await response.text());
+    } catch (_error) {
+      this.historyOperation = null;
+      this.#syncHistoryButtons();
+    }
+  }
+
+  #completeHistoryOperation() {
+    const operation = this.historyOperation;
+    if (!operation) return;
+
+    if (operation.direction === "undo") {
+      this.undoStack.pop();
+      this.redoStack.push(operation.action);
+    } else {
+      this.redoStack.pop();
+      this.undoStack.push(operation.action);
+    }
+    this.historyOperation = null;
+    this.#syncHistoryButtons();
+  }
+
+  #syncHistoryButtons() {
+    const pending = Boolean(this.historyOperation);
+    this.undoButtonTargets.forEach((button) => {
+      button.disabled = pending || this.undoStack.length === 0;
+    });
+    this.redoButtonTargets.forEach((button) => {
+      button.disabled = pending || this.redoStack.length === 0;
+    });
   }
 
   async submitUndo(changeId, notice, undoButton) {

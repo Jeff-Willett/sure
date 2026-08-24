@@ -35,6 +35,7 @@ en:
       recent_changes: "Recent changes"
       history: "History"
       undo: "Undo"
+      redo: "Redo"
       undo_message: "%{scheme} category changed to %{category}."
       undo_conflict: "The category is now %{category}. Review history to see what changed."
       view_history: "View history"

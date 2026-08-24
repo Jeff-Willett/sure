@@ -19,6 +19,26 @@
           data: { transaction_explorer_grid_target: "editToggle", action: "transaction-explorer-grid#toggleEditMode" }
         ) %>
         <%= render DS::Button.new(
+          icon: "undo-2",
+          variant: :icon,
+          size: :sm,
+          type: :button,
+          disabled: true,
+          title: t("myfin.transaction_explorer.undo"),
+          aria: { label: t("myfin.transaction_explorer.undo") },
+          data: { transaction_explorer_grid_target: "undoButton", action: "transaction-explorer-grid#undoHistory" }
+        ) %>
+        <%= render DS::Button.new(
+          icon: "redo-2",
+          variant: :icon,
+          size: :sm,
+          type: :button,
+          disabled: true,
+          title: t("myfin.transaction_explorer.redo"),
+          aria: { label: t("myfin.transaction_explorer.redo") },
+          data: { transaction_explorer_grid_target: "redoButton", action: "transaction-explorer-grid#redoHistory" }
+        ) %>
+        <%= render DS::Button.new(
           text: t("myfin.transaction_explorer.fill_down"),
           variant: :ghost,
           size: :sm,
