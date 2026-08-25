@@ -67,6 +67,176 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[aria-label^='Reporting profile:']", count: 0
   end
 
+  test "keeps the category panel open after a category filter submission" do
+    get myfin_transaction_explorer_path, params: {
+      jpw_categories: [ "Renter Expenses" ]
+    }
+
+    assert_response :success
+    assert_select "details[open]", count: 1 do
+      assert_select "summary", text: /WDG and JPW categories/
+    end
+  end
+
+  test "renders a semantic resizable category grid with edit controls" do
+    entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 7),
+      name: "Resizable grid expense",
+      amount: 120,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+
+    get myfin_transaction_explorer_path, params: { search: "grid" }
+
+    assert_response :success
+    shopping_category = @family.myfin_category_schemes.find_by!(name: "WDG").scheme_categories.find_by!(name: "Shopping")
+    assert_select "div[data-controller~='transaction-explorer-grid']", count: 1 do
+      assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 7
+      assert_select "thead th", count: 7 do |headers|
+        headers.each do |header|
+          assert_select header, "[data-transaction-explorer-columns-target='handle'][tabindex='0']", count: 1
+        end
+      end
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'][data-transaction-explorer-grid-target='cell'] form", count: 1
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'][data-transaction-explorer-grid-target='cell'] form", count: 1
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form[action*='search=grid'] input[name='scheme_id']", count: 1
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form select[name='category_id'] option[value='']", text: "Uncategorized", count: 1
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form select[name='category_id'] option[value=''][selected]", count: 0
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form select[name='category_id'] option[value='#{shopping_category.id}'][selected]", text: "Shopping", count: 1
+      assert_select "th[data-column='date'][style*='transaction-explorer-date-offset']", count: 1
+      assert_select "th[data-column='entity'][style*='transaction-explorer-entity-offset']", count: 1
+    end
+    assert_select "#transaction-explorer-ledger[data-controller~='transaction-explorer-grid']", count: 0
+    assert_select "tr[data-entry-id='#{entry.id}'] td:first-child[style*='transaction-explorer-date-offset']", count: 1
+    assert_select "tr[data-entry-id='#{entry.id}'] td:nth-child(2)[style*='transaction-explorer-entity-offset']", count: 1
+    assert_select "button", text: "Edit categories", count: 1
+    assert_select "span[data-transaction-explorer-grid-target='editStatus'][role='status'][hidden]", text: /Editing on/, count: 1
+    assert_select "button[data-transaction-explorer-grid-target='undoButton'][aria-label='Undo'][disabled]", count: 1
+    assert_select "button[data-transaction-explorer-grid-target='redoButton'][aria-label='Redo'][disabled]", count: 1
+    assert_select "button[data-transaction-explorer-grid-target='fillButton'][disabled]", text: "Fill down", count: 1
+    assert_select "div[data-transaction-explorer-grid-batch-url-value='#{myfin_transaction_explorer_classification_batch_path(search: "grid")}']", count: 1
+    assert_select "span", text: /Shift-select.*Copy\/Paste/, count: 1
+    assert_select "button", text: "Recent changes", count: 1
+    assert_select "button", text: "Reset column widths", count: 1
+  end
+
+  test "renders category editors only for editable rows" do
+    read_only_account = Account.create!(
+      family: @family,
+      owner: users(:family_member),
+      name: "Read-only checking",
+      balance: 0,
+      currency: "USD",
+      accountable_type: "Depository",
+      accountable: Depository.create!(subtype: "checking")
+    )
+    read_only_account.account_shares.create!(
+      user: @user,
+      permission: "read_only",
+      include_in_finances: true
+    )
+    read_only_account.myfin_account_entities.create!(entity: @personal)
+
+    editable_entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 8),
+      name: "Editable grid expense",
+      amount: 45,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+    read_only_entry = create_classified_entry(
+      account: read_only_account,
+      entity: @personal,
+      date: Date.new(2026, 8, 9),
+      name: "Read-only grid expense",
+      amount: 30,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+
+    get myfin_transaction_explorer_path
+
+    assert_response :success
+    assert_select "tr[data-entry-id='#{editable_entry.id}'] td[data-scheme] form", count: 2
+    assert_select "tr[data-entry-id='#{read_only_entry.id}'] td[data-scheme] form", count: 0
+    assert_select "tr[data-entry-id='#{read_only_entry.id}'] td[data-scheme] [data-editor]", count: 0
+  end
+
+  test "renders scoped history for editable rows and recent changes in the drawer" do
+    entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 10),
+      name: "History affordance expense",
+      amount: 45,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+
+    read_only_account = Account.create!(
+      family: @family,
+      owner: users(:family_member),
+      name: "History read-only checking",
+      balance: 0,
+      currency: "USD",
+      accountable_type: "Depository",
+      accountable: Depository.create!(subtype: "checking")
+    )
+    read_only_account.account_shares.create!(
+      user: @user,
+      permission: "read_only",
+      include_in_finances: true
+    )
+    read_only_account.myfin_account_entities.create!(entity: @personal)
+    read_only_entry = create_classified_entry(
+      account: read_only_account,
+      entity: @personal,
+      date: Date.new(2026, 8, 11),
+      name: "History hidden expense",
+      amount: 30,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+
+    get myfin_transaction_explorer_path
+
+    assert_response :success
+    assert_select "tr[data-entry-id='#{entry.id}'] a[href='#{myfin_entry_classification_changes_path(entry)}'][data-turbo-frame='drawer']", count: 1
+    assert_select "tr[data-entry-id='#{read_only_entry.id}'] a[href*='classification_changes']", count: 0
+    assert_select "form[action='#{myfin_classification_changes_path}'] button[data-turbo-frame='drawer']", count: 1
+  end
+
+  test "renders the committed change ID in the edit result for undo" do
+    scheme = @family.myfin_category_schemes.find_by!(name: "WDG")
+    old_category = scheme.scheme_categories.create!(name: "Undo original category")
+    new_category = scheme.scheme_categories.create!(name: "Undo updated category")
+    entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 12),
+      name: "Undo result expense",
+      amount: 55,
+      wdg: old_category.name,
+      jpw: "Groceries"
+    )
+
+    patch myfin_entry_transaction_explorer_classification_path(entry), params: {
+      scheme_id: scheme.id,
+      category_id: new_category.id,
+      expected_category_id: old_category.id
+    }, as: :turbo_stream
+
+    change = Myfin::ClassificationChange.order(:created_at, :id).last
+
+    assert_response :success
+    assert_select "turbo-stream[action='update'][target='transaction-explorer-edit-result'] template [data-entry-id='#{entry.id}'][data-scheme='WDG'][data-change-id='#{change.id}'][data-scheme-id='#{scheme.id}'][data-previous-category-id='#{old_category.id}'][data-new-category-id='#{new_category.id}'][data-revert-url='#{revert_myfin_classification_change_path(change)}']", count: 1
+  end
+
   private
     def create_classified_entry(account:, entity:, date:, name:, amount:, wdg:, jpw:)
       entry = account.entries.create!(

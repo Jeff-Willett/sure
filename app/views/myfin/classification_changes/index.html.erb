@@ -1,0 +1,19 @@
+<%= render DS::Dialog.new(variant: :drawer) do |dialog| %>
+  <% dialog.with_header(title: t(".title")) %>
+  <% dialog.with_body do %>
+    <% if @changes.any? %>
+      <ul class="space-y-3" aria-label="<%= t(".events") %>">
+        <%= render partial: "event", collection: @changes, as: :change, locals: { show_context: true } %>
+      </ul>
+      <% if @changes.size == Myfin::ClassificationChangesController::PAGE_SIZE %>
+        <% cursor = @changes.last %>
+        <%= link_to t(".more"),
+          myfin_classification_changes_path(cursor: "#{cursor.created_at.iso8601(6)},#{cursor.id}"),
+          class: "mt-4 inline-block text-sm text-link hover:underline",
+          data: { turbo_frame: "drawer", turbo_prefetch: false } %>
+      <% end %>
+    <% else %>
+      <p class="text-sm text-secondary"><%= t(".empty") %></p>
+    <% end %>
+  <% end %>
+<% end %>

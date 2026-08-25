@@ -1,0 +1,43 @@
+<%# locals: (row:, scheme:, category_options:) %>
+<% value_key = scheme.downcase %>
+<% category_id = row.public_send("#{value_key}_category_id") %>
+<% label = row.public_send(value_key) %>
+<% options = category_options.fetch(scheme, []) %>
+<% select_options = options.map { |category_id, category_name| [ category_name, category_id ] } %>
+<% scheme_id = transaction_explorer_scheme_ids.fetch(scheme) %>
+<% action_url = myfin_entry_transaction_explorer_classification_path(row.entry_id, request.query_parameters) %>
+
+<td
+  class="relative px-3 py-2 text-primary"
+  data-entry-id="<%= row.entry_id %>"
+  data-scheme="<%= scheme %>"
+  data-editable="<%= row.editable %>"
+  data-category-id="<%= category_id %>"
+  data-expected-category-id="<%= category_id %>"
+  <% if row.editable %>data-transaction-explorer-grid-target="cell"<% end %>
+  >
+  <span data-transaction-explorer-grid-label><%= label %></span>
+  <% if row.editable %>
+    <div hidden data-transaction-explorer-grid-target="editor" data-editor>
+      <%= form_with url: action_url,
+        method: :patch,
+        class: "flex items-center gap-2",
+        data: {
+          turbo_stream: true,
+          transaction_explorer_grid_target: "form",
+          action: "submit->transaction-explorer-grid#submitEditor change->transaction-explorer-grid#submitOnChange"
+        } do |form| %>
+        <%= form.hidden_field :scheme_id, value: scheme_id %>
+        <%= form.hidden_field :expected_category_id, value: category_id %>
+        <%= form.select :category_id,
+          select_options,
+          { include_blank: t("myfin.transaction_explorer.category_uncategorized"), selected: category_id },
+          {
+            class: "form-field__input min-w-0",
+            data: { transaction_explorer_grid_target: "select" },
+            aria: { label: t("myfin.transaction_explorer.edit_category", scheme: scheme) }
+          } %>
+      <% end %>
+    </div>
+  <% end %>
+</td>

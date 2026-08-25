@@ -130,6 +130,39 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     }, report.selected_filters)
   end
 
+  test "category availability respects every filter except its own category group" do
+    create_entry(
+      entity_amounts: { @personal => 120 },
+      date: Date.new(2026, 8, 5),
+      name: "Camping living expense",
+      amount: 120,
+      wdg: "Other Living Expenses",
+      jpw: "Camping1"
+    )
+    create_entry(
+      entity_amounts: { @personal => 80 },
+      date: Date.new(2026, 8, 6),
+      name: "Camping RV expense",
+      amount: 80,
+      wdg: "Auto & Transport (RV)",
+      jpw: "Camping1"
+    )
+    create_entry(
+      entity_amounts: { @personal => 40 },
+      date: Date.new(2026, 8, 7),
+      name: "Unrelated shopping expense",
+      amount: 40,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+    filters = Myfin::TransactionExplorer::Filters.from_params(jpw_categories: [ "Camping1" ])
+
+    report = Myfin::TransactionExplorer::Report.call(user: @user, filters: filters)
+
+    assert_equal Set[ "Auto & Transport (RV)", "Other Living Expenses" ], report.category_availability[:wdg_categories]
+    assert_equal Set[ "Camping1", "Groceries" ], report.category_availability[:jpw_categories]
+  end
+
   test "returns metrics and a hierarchical rollup from the final rows" do
     create_entry(
       entity_amounts: { @personal => 120 },
@@ -227,6 +260,87 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     row = report.rows.find { |candidate| candidate.entry_id == entry.id }
     assert_equal "Uncategorized", row.wdg
     assert_equal "Uncategorized", row.jpw
+  end
+
+  test "exposes editor metadata and all active category options outside the current filters" do
+    wdg_scheme = @family.myfin_category_schemes.find_by!(name: "WDG")
+    jpw_scheme = @family.myfin_category_schemes.find_by!(name: "JPW")
+    wdg_category = wdg_scheme.scheme_categories.create!(name: "Report metadata WDG category")
+    jpw_category = jpw_scheme.scheme_categories.create!(name: "Report metadata JPW category")
+    available_only_in_editor = wdg_scheme.scheme_categories.create!(name: "Explorer-only WDG category")
+    wdg_scheme.scheme_categories.create!(name: "Inactive Explorer category", active: false)
+    entry = create_entry(
+      entity_amounts: { @personal => 120 },
+      date: Date.new(2026, 8, 5),
+      name: "Report editor metadata",
+      amount: 120,
+      wdg: wdg_category.name,
+      jpw: jpw_category.name
+    )
+
+    report = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      filters: Myfin::TransactionExplorer::Filters.from_params(wdg_categories: [ wdg_category.name ])
+    )
+
+    row = report.rows.find { |candidate| candidate.entry_id == entry.id }
+    assert_equal entry.transaction_id, row.transaction_id
+    assert_equal wdg_category.id, row.wdg_category_id
+    assert_equal jpw_category.id, row.jpw_category_id
+    assert row.editable
+    assert_includes report.category_options.fetch("WDG"), [ available_only_in_editor.id, available_only_in_editor.name ]
+    assert_not_includes report.category_options.fetch("WDG"), [ wdg_scheme.scheme_categories.find_by!(name: "Inactive Explorer category").id, "Inactive Explorer category" ]
+  end
+
+  test "marks rows from read-only accounts as not editable" do
+    wdg_scheme = @family.myfin_category_schemes.find_by!(name: "WDG")
+    jpw_scheme = @family.myfin_category_schemes.find_by!(name: "JPW")
+    wdg_category = wdg_scheme.scheme_categories.create!(name: "Read-only metadata WDG category")
+    jpw_category = jpw_scheme.scheme_categories.create!(name: "Read-only metadata JPW category")
+    create_entry(
+      entity_amounts: { @personal => 120 },
+      date: Date.new(2026, 8, 5),
+      name: "Report read-only editor metadata",
+      amount: 120,
+      account: accounts(:credit_card),
+      wdg: wdg_category.name,
+      jpw: jpw_category.name
+    )
+
+    report = Myfin::TransactionExplorer::Report.call(
+      user: users(:family_member),
+      filters: Myfin::TransactionExplorer::Filters.from_params({})
+    )
+
+    row = report.rows.find { |candidate| candidate.description == "Report read-only editor metadata" }
+    assert_not row.editable
+  end
+
+  test "loads shared-account permissions once for multiple account rows" do
+    member = users(:family_member)
+    accounts(:investment).share_with!(member, permission: "read_write")
+    entries = [ accounts(:depository), accounts(:credit_card), accounts(:investment) ].map.with_index do |account, index|
+      create_entry(
+        entity_amounts: { @personal => index + 1 },
+        date: Date.new(2026, 8, index + 1),
+        name: "Report shared-account permission #{index}",
+        amount: index + 1,
+        account: account
+      )
+    end
+
+    ActiveRecord::Base.connection.clear_query_cache
+    queries = capture_sql_queries do
+      report = Myfin::TransactionExplorer::Report.call(
+        user: member,
+        filters: Myfin::TransactionExplorer::Filters.from_params({})
+      )
+
+      assert_equal entries.map(&:id).sort, report.rows.map(&:entry_id).sort
+    end
+
+    account_share_loads = queries.count { |sql| sql.match?(/SELECT "account_shares"\.\* FROM "account_shares"/) }
+    assert_equal 1, account_share_loads
   end
 
   private

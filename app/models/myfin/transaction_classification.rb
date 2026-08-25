@@ -16,6 +16,13 @@ module Myfin
       inverse_of: :transaction_classifications
     belongs_to :reviewed_by, class_name: "User", optional: true
 
+    has_many :classification_changes,
+      ->(classification) { where(category_scheme_id: classification.category_scheme_id) },
+      class_name: "Myfin::ClassificationChange",
+      foreign_key: :transaction_id,
+      primary_key: :transaction_id,
+      inverse_of: false
+
     validates :classification_source, inclusion: { in: SOURCES }
     validates :confidence,
       numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 },

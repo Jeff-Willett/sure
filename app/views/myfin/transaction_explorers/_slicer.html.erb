@@ -1,4 +1,6 @@
-<%# locals: (label:, key:, options:, selected:, inline: false) %>
+<%# locals: (label:, key:, options:, selected:, inline: false, available: nil, explicit: false) %>
+
+<% available ||= options.map { |value, _text| value.to_s }.to_set %>
 
 <fieldset
   class="<%= class_names("min-w-0 bg-container px-3 py-2", "flex flex-wrap items-center gap-x-2 gap-y-1.5" => inline) %>"
@@ -45,10 +47,13 @@
   <div class="<%= class_names("flex flex-wrap gap-1", "min-w-0 flex-1" => inline) %>">
     <% options.each do |value, text| %>
       <% input_id = "transaction-explorer-#{key}-#{value.to_s.parameterize}" %>
+      <% option_available = available.include?(value.to_s) %>
+      <% option_selected = selected.include?(value.to_s) %>
+      <% option_emphasized = option_available || (explicit && option_selected) %>
       <label for="<%= input_id %>" class="cursor-pointer">
         <%= check_box_tag "#{key}[]",
               value,
-              selected.include?(value.to_s),
+              option_selected,
               id: input_id,
               class: "peer sr-only",
               data: {
@@ -58,7 +63,12 @@
                 transaction_explorer_slicer_target: "checkbox",
                 action: "transaction-explorer-slicer#selectionChanged"
               } %>
-        <span class="inline-flex min-h-7 items-center rounded-md bg-container-inset px-2 py-1 text-xs font-medium text-secondary transition-colors duration-200 hover:bg-container-inset-hover hover:text-primary peer-checked:bg-inverse peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-focus-ring pointer-coarse:min-h-8 theme-dark:peer-checked:text-black motion-reduce:transition-none">
+        <span
+          class="<%= class_names(
+            "inline-flex min-h-7 items-center rounded-md bg-container-inset px-2 py-1 text-xs font-medium text-secondary transition-all duration-200 hover:bg-container-inset-hover hover:text-primary peer-checked:bg-inverse peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-focus-ring pointer-coarse:min-h-8 theme-dark:peer-checked:text-black motion-reduce:transition-none",
+            "opacity-40 saturate-50 hover:opacity-75" => !option_emphasized
+          ) %>"
+          data-filter-available="<%= option_available %>">
           <%= text %>
         </span>
       </label>

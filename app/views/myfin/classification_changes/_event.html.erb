@@ -1,0 +1,26 @@
+<li class="rounded-lg bg-container p-3 shadow-border-xs">
+  <% if local_assigns.fetch(:show_context, false) %>
+    <% entry = change.sure_transaction.entry %>
+    <p class="mb-2 text-xs text-secondary"><%= l(entry.date, format: :short) %> · <%= entry.name %></p>
+  <% end %>
+  <div class="flex items-start justify-between gap-3">
+    <div>
+      <p class="text-sm font-medium text-primary"><%= change.category_scheme.name %></p>
+      <p class="mt-1 text-sm text-secondary">
+        <span><%= change.previous_category_name || t(".uncategorized") %></span>
+        <span aria-hidden="true">→</span>
+        <span><%= change.new_category_name || t(".uncategorized") %></span>
+      </p>
+    </div>
+    <p class="text-xs text-secondary"><%= l(change.created_at, format: :short) %></p>
+  </div>
+  <p class="mt-2 text-xs text-secondary">
+    <%= t(".by", actor: change.actor&.display_name || t(".deleted_user")) %>
+    <span aria-hidden="true">·</span>
+    <%= t(".actions.#{change.action}") %>
+    <% if change.reverted_change %>
+      <span aria-hidden="true">·</span>
+      <%= t(".revert_target") %>
+    <% end %>
+  </p>
+</li>

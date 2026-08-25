@@ -7,8 +7,14 @@ Rails.application.routes.draw do
   namespace :myfin do
     resource :reporting_profile, only: :update
     resource :transaction_explorer, only: :show
+    resource :transaction_explorer_classification_batch, only: :update
     resources :entries, only: [] do
       resource :allocation, only: :update, controller: :entry_allocations
+      resource :transaction_explorer_classification, only: :update
+      resources :classification_changes, only: :index
+    end
+    resources :classification_changes, only: :index do
+      post :revert, on: :member
     end
     resources :transactions, only: [] do
       resource :classifications, only: :update, controller: :transaction_classifications

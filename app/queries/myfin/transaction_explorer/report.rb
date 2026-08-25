@@ -1,13 +1,28 @@
 module Myfin
   module TransactionExplorer
     class Report
-      Row = Data.define(:entry_id, :date, :description, :amount, :type, :entity_ids, :entity_names, :wdg, :jpw, :account_name)
+      Row = Data.define(
+        :entry_id,
+        :transaction_id,
+        :date,
+        :description,
+        :amount,
+        :type,
+        :entity_ids,
+        :entity_names,
+        :wdg,
+        :wdg_category_id,
+        :jpw,
+        :jpw_category_id,
+        :account_name,
+        :editable
+      )
       Metrics = Data.define(:transactions, :expenses, :income, :transfer_net)
       RollupCategory = Data.define(:jpw, :amount, :count)
       RollupGroup = Data.define(:wdg, :amount, :categories)
       RollupType = Data.define(:type, :amount, :groups)
       FilterOptions = Data.define(:entities, :years, :months, :types, :wdg_categories, :jpw_categories)
-      Result = Data.define(:rows, :metrics, :rollup, :filter_options, :selected_filters)
+      Result = Data.define(:rows, :metrics, :rollup, :filter_options, :category_options, :selected_filters, :category_availability)
 
       TYPE_ORDER = { "Expense" => 0, "Income" => 1, "Transfer" => 2 }.freeze
 
@@ -30,7 +45,9 @@ module Myfin
           metrics: build_metrics(rows),
           rollup: build_rollup(rows),
           filter_options: filter_options,
-          selected_filters: build_selected_filters(filter_options)
+          category_options: build_category_options,
+          selected_filters: build_selected_filters(filter_options),
+          category_availability: build_category_availability(build_rows(selected_entity_ids))
         )
       end
 
@@ -44,7 +61,7 @@ module Myfin
             .joins(:myfin_allocations)
             .where(myfin_entry_allocations: { entity_id: all_entity_ids })
             .distinct
-            .includes(:account, { myfin_allocations: :entity }, entryable: { myfin_classifications: [ :category_scheme, :scheme_category ] })
+            .includes(account: :account_shares, myfin_allocations: :entity, entryable: { myfin_classifications: [ :category_scheme, :scheme_category ] })
             .to_a
         end
 
@@ -54,11 +71,15 @@ module Myfin
             next if allocations.empty?
 
             classifications = entry.transaction.myfin_classifications.index_by { |classification| classification.category_scheme.name }
+            wdg_classification = classifications["WDG"]
+            jpw_classification = classifications["JPW"]
             {
               entry: entry,
               allocations: allocations,
-              wdg: classifications["WDG"]&.scheme_category&.name || "Uncategorized",
-              jpw: classifications["JPW"]&.scheme_category&.name || "Uncategorized"
+              wdg: wdg_classification&.scheme_category&.name || "Uncategorized",
+              wdg_category_id: wdg_classification&.scheme_category_id,
+              jpw: jpw_classification&.scheme_category&.name || "Uncategorized",
+              jpw_category_id: jpw_classification&.scheme_category_id
             }
           end
         end
@@ -76,6 +97,7 @@ module Myfin
 
             Row.new(
               entry_id: entry.id,
+              transaction_id: transaction.id,
               date: entry.date,
               description: entry.name,
               amount: allocated_amount * -1,
@@ -83,8 +105,11 @@ module Myfin
               entity_ids: selected_allocations.map(&:entity_id).uniq,
               entity_names: selected_allocations.map { |allocation| allocation.entity.name }.uniq.sort,
               wdg: source_row.fetch(:wdg),
+              wdg_category_id: source_row.fetch(:wdg_category_id),
               jpw: source_row.fetch(:jpw),
-              account_name: entry.account.name
+              jpw_category_id: source_row.fetch(:jpw_category_id),
+              account_name: entry.account.name,
+              editable: editable?(entry)
             )
           end
         end
@@ -100,12 +125,16 @@ module Myfin
         end
 
         def apply_filters(rows)
+          apply_filters_except(rows)
+        end
+
+        def apply_filters_except(rows, excluded_key = nil)
           rows
-            .select { |row| keep_filter?(:years, row.date.year) }
-            .select { |row| keep_filter?(:months, row.date.month) }
-            .select { |row| keep_filter?(:types, row.type) }
-            .select { |row| keep_filter?(:wdg_categories, row.wdg) }
-            .select { |row| keep_filter?(:jpw_categories, row.jpw) }
+            .select { |row| excluded_key == :years || keep_filter?(:years, row.date.year) }
+            .select { |row| excluded_key == :months || keep_filter?(:months, row.date.month) }
+            .select { |row| excluded_key == :types || keep_filter?(:types, row.type) }
+            .select { |row| excluded_key == :wdg_categories || keep_filter?(:wdg_categories, row.wdg) }
+            .select { |row| excluded_key == :jpw_categories || keep_filter?(:jpw_categories, row.jpw) }
             .select { |row| filters.search.blank? || row_search_text(row).include?(filters.search) }
             .sort_by { |row| [ -row.date.jd, row.entry_id ] }
         end
@@ -164,6 +193,19 @@ module Myfin
           )
         end
 
+        def build_category_options
+          user.family.myfin_category_schemes
+            .where(name: %w[WDG JPW])
+            .includes(:scheme_categories)
+            .to_h do |scheme|
+              categories = scheme.scheme_categories
+                .select(&:active?)
+                .sort_by { |category| [ category.name, category.id ] }
+                .map { |category| [ category.id, category.name ] }
+              [ scheme.name, categories ]
+            end
+        end
+
         def build_selected_filters(filter_options)
           {
             entity_ids: filters.selected_values(:entity_ids, available: filter_options.entities.map(&:first)),
@@ -175,10 +217,21 @@ module Myfin
           }
         end
 
+        def build_category_availability(rows)
+          {
+            wdg_categories: apply_filters_except(rows, :wdg_categories).map(&:wdg).uniq.to_set,
+            jpw_categories: apply_filters_except(rows, :jpw_categories).map(&:jpw).uniq.to_set
+          }
+        end
+
         def transaction_type(transaction, allocated_amount)
           return "Transfer" if %w[funds_movement cc_payment].include?(transaction.kind)
 
           allocated_amount.negative? ? "Income" : "Expense"
+        end
+
+        def editable?(entry)
+          entry.account.permission_for(user).in?([ :owner, :full_control, :read_write ])
         end
 
         def row_search_text(row)

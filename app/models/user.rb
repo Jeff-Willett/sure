@@ -32,6 +32,10 @@ class User < ApplicationRecord
   has_many :impersonated_support_sessions, class_name: "ImpersonationSession", foreign_key: :impersonated_id, dependent: :destroy
   has_many :oidc_identities, dependent: :destroy
   has_many :sso_audit_logs, dependent: :nullify
+  has_many :myfin_classification_changes,
+           class_name: "Myfin::ClassificationChange",
+           foreign_key: :actor_id,
+           inverse_of: :actor
   has_many :owned_accounts, class_name: "Account", foreign_key: :owner_id
   has_many :account_shares, dependent: :destroy
   has_many :shared_accounts, through: :account_shares, source: :account
