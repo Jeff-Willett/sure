@@ -160,7 +160,7 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     report = Myfin::TransactionExplorer::Report.call(user: @user, filters: filters)
 
     assert_equal Set[ "Auto & Transport (RV)", "Other Living Expenses" ], report.category_availability[:wdg_categories]
-    assert_equal Set[ "Camping1" ], report.category_availability[:jpw_categories]
+    assert_equal Set[ "Camping1", "Groceries" ], report.category_availability[:jpw_categories]
   end
 
   test "returns metrics and a hierarchical rollup from the final rows" do
