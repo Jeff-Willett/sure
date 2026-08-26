@@ -151,6 +151,9 @@ class Family < ApplicationRecord
   has_many :myfin_category_schemes,
            class_name: "Myfin::CategoryScheme",
            dependent: :destroy
+  has_many :myfin_category_rollup_mappings,
+           through: :myfin_category_schemes,
+           source: :source_rollup_mappings
   has_many :myfin_reporting_profiles,
            class_name: "Myfin::ReportingProfile",
            dependent: :destroy

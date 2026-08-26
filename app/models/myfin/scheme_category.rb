@@ -19,6 +19,19 @@ module Myfin
       class_name: "Myfin::TransactionClassification",
       inverse_of: :scheme_category,
       dependent: :restrict_with_error
+    has_one :wdg_rollup_mapping,
+      class_name: "Myfin::CategoryRollupMapping",
+      foreign_key: :source_category_id,
+      inverse_of: :source_category,
+      dependent: :restrict_with_error
+    has_one :wdg_rollup_category,
+      through: :wdg_rollup_mapping,
+      source: :target_category
+    has_many :incoming_rollup_mappings,
+      class_name: "Myfin::CategoryRollupMapping",
+      foreign_key: :target_category_id,
+      inverse_of: :target_category,
+      dependent: :restrict_with_error
     has_many :previous_classification_changes,
       class_name: "Myfin::ClassificationChange",
       foreign_key: :previous_category_id,
