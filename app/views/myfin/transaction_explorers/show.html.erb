@@ -38,5 +38,9 @@
     <%= render "metrics", metrics: @report.metrics %>
   </div>
 
-  <%= render "tabulator_grid", rows: @report.rows, total_count: @report.rows.size %>
+  <%= render "tabulator_grid",
+        rows: @report.rows,
+        total_count: @report.rows.size,
+        category_options: @report.category_options,
+        tag_options: @report.tag_options %>
 </div>

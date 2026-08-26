@@ -174,6 +174,11 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     row = tabulator_row(entry)
     assert_equal "Shopping", row.fetch("wdg_rollup")
     assert_equal "Groceries", row.fetch("detail_category")
+    assert_equal myfin_entry_transaction_explorer_classification_path(entry), row.fetch("category_update_url")
+    assert_equal tags_transaction_path(entry), row.fetch("tag_update_url")
+    assert row.fetch("scheme_id").present?
+    assert_select "template[data-transaction-explorer-tabulator-target='categoryData']", count: 1
+    assert_select "template[data-transaction-explorer-tabulator-target='tagData']", count: 1
   end
 
 
