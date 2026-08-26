@@ -47,6 +47,37 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[aria-label^='Reporting profile:']", count: 0
   end
 
+  test "uses compact JPW and CGI display labels" do
+    personal_entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 5),
+      name: "Compact JPW label",
+      amount: 40,
+      wdg: "Shopping",
+      jpw: "Shopping"
+    )
+    gci_entry = create_classified_entry(
+      account: accounts(:credit_card),
+      entity: @gci,
+      date: Date.new(2026, 8, 6),
+      name: "Compact CGI label",
+      amount: 25,
+      wdg: nil,
+      jpw: "Business Software"
+    )
+
+    get myfin_transaction_explorer_path
+
+    assert_response :success
+    assert_select "fieldset[data-transaction-explorer-slicer-key-value='entity_ids']", text: /JPW/, count: 1
+    assert_select "fieldset[data-transaction-explorer-slicer-key-value='entity_ids']", text: /CGI/, count: 1
+    assert_select "fieldset[data-transaction-explorer-slicer-key-value='entity_ids']", text: /JPW Personal|Green Capital Investing/, count: 0
+    assert_select "tr[data-entry-id='#{personal_entry.id}']", text: /JPW/, count: 1
+    assert_select "tr[data-entry-id='#{gci_entry.id}']", text: /CGI/, count: 1
+    assert_select "tr[data-entry-id='#{gci_entry.id}']", text: /Green Capital Investing|\bGCI\b/, count: 0
+  end
+
   test "renders one shared filtered set in the rollup and ledger" do
     personal_entry = create_classified_entry(
       account: accounts(:depository),
@@ -95,7 +126,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
       assert_select "[data-action='app-layout#openMobileSidebar']", count: 1
     end
     assert_select "section", text: /Transactions\s+1\s+Expenses\s+\$120\.00\s+Income\s+\$0\.00\s+Transfer net\s+\$0\.00/
-    assert_select "section", text: /Expense\s+\$120\.00.*JPW Personal\s+\$120\.00.*Groceries\s+\$120\.00/m
+    assert_select "section", text: /Expense\s+\$120\.00.*JPW\s+\$120\.00.*Groceries\s+\$120\.00/m
     assert_select "a[href*='wdg_rollup_ids'] span[aria-hidden='true']", count: 0
     assert_select "a[href*='detail_category_ids'] span[aria-hidden='true']", text: "🛒", minimum: 1
     assert_select "tr[data-entry-id='#{personal_entry.id}']", count: 1

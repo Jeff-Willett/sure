@@ -165,13 +165,13 @@ module Myfin
               amount: allocated_amount * -1,
               type: transaction_type(transaction, allocated_amount),
               entity_ids: selected_allocations.map(&:entity_id).uniq,
-              entity_names: selected_allocations.map { |allocation| allocation.entity.name }.uniq.sort,
+              entity_names: selected_allocations.map { |allocation| allocation.entity.display_name }.uniq.sort,
               wdg: wdg_label,
               wdg_category_id: wdg_id,
               jpw: detail_label,
               jpw_category_id: detail_id,
               entity_id: context.entity&.id,
-              entity_name: context.entity&.name,
+              entity_name: context.entity&.display_name,
               detail_scheme_name: context.scheme&.name,
               detail_category_id: context.detail_category&.id,
               detail_category: context.detail_category&.name || "Uncategorized",
@@ -339,7 +339,9 @@ module Myfin
           tag_ids = rows.flat_map(&:tag_ids).uniq
 
           FilterOptions.new(
-            entities: user.family.myfin_entities.active.where(id: entity_ids).order(:name).pluck(:id, :name),
+            entities: user.family.myfin_entities.active.where(id: entity_ids).order(:name).map { |entity|
+              [ entity.id, entity.display_name ]
+            },
             years: rows.map { |row| row.date.year }.uniq.sort,
             months: rows.map { |row| row.date.month }.uniq.sort,
             types: rows.map(&:type).uniq.sort_by { |type| TYPE_ORDER.fetch(type, 99) },

@@ -3,6 +3,10 @@ module Myfin
     self.table_name = "myfin_entities"
 
     ENTITY_TYPES = %w[person business household other].freeze
+    DISPLAY_NAMES = {
+      "JPW Personal" => "JPW",
+      "Green Capital Investing" => "CGI"
+    }.freeze
 
     belongs_to :family
 
@@ -29,5 +33,9 @@ module Myfin
     validates :entity_type, inclusion: { in: ENTITY_TYPES }
 
     scope :active, -> { where(active: true) }
+
+    def display_name
+      DISPLAY_NAMES.fetch(name, name)
+    end
   end
 end

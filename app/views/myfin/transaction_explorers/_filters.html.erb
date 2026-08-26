@@ -79,7 +79,7 @@
       <% end %>
       <% if gci_categories.any? %>
         <%= render "myfin/transaction_explorers/slicer",
-              label: "GCI categories",
+              label: "CGI categories",
               key: :detail_category_ids,
               options: gci_categories.map { |id, _scheme, name| [ id, name ] },
               selected: selected_filters[:detail_category_ids],

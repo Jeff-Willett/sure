@@ -32,6 +32,10 @@ module Myfin::TransactionExplorersHelper
       .to_h
   end
 
+  def transaction_explorer_catalog_label(name)
+    name == "GCI" ? "CGI" : name
+  end
+
   ROLLUP_EMOJI_RULES = [
     [ /camp/, "🏕️" ],
     [ /\brv\b/, "🚐" ],

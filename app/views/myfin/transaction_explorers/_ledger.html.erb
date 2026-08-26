@@ -127,7 +127,7 @@
               </td>
               <% if column_keys.include?("catalog") %>
                 <td class="px-3 py-2 text-secondary" data-column="catalog">
-                  <%= row.detail_scheme_name || t("myfin.transaction_explorer.not_applicable") %>
+                  <%= transaction_explorer_catalog_label(row.detail_scheme_name) || t("myfin.transaction_explorer.not_applicable") %>
                 </td>
               <% end %>
               <% if column_keys.include?("wdg_rollup") %>

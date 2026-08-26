@@ -271,8 +271,8 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     report = Myfin::TransactionExplorer::Report.call(user: @user, filters: filters)
 
     assert_equal [
-      [ @gci.id, "Green Capital Investing" ],
-      [ @personal.id, "JPW Personal" ]
+      [ @gci.id, "CGI" ],
+      [ @personal.id, "JPW" ]
     ], report.filter_options.entities
     assert_equal [ 2025, 2026 ], report.filter_options.years
     assert_equal [ 6, 8 ], report.filter_options.months
