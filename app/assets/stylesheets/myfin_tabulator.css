@@ -1,0 +1,45 @@
+.myfin-tabulator-shell .tabulator {
+  height: 100%;
+  border: 0;
+  background: var(--color-container);
+  color: var(--color-primary);
+  font-family: inherit;
+  font-size: 0.8125rem;
+}
+
+.myfin-tabulator-shell .tabulator-header,
+.myfin-tabulator-shell .tabulator-col,
+.myfin-tabulator-shell .tabulator-row,
+.myfin-tabulator-shell .tabulator-cell {
+  border-color: var(--color-secondary);
+  background: var(--color-container);
+  color: var(--color-primary);
+}
+
+.myfin-tabulator-shell .tabulator-col {
+  background: var(--color-container-inset);
+}
+
+.myfin-tabulator-shell .tabulator-row:nth-child(even) .tabulator-cell {
+  background: var(--color-container-inset);
+}
+
+.myfin-tabulator-shell .tabulator-row:hover .tabulator-cell,
+.myfin-tabulator-shell .tabulator-cell:hover {
+  background: var(--color-surface-hover);
+}
+
+.myfin-tabulator-shell .tabulator-cell,
+.myfin-tabulator-shell .tabulator-col-content {
+  padding: 0.375rem 0.5rem;
+}
+
+.myfin-tabulator-shell .tabulator-group {
+  border-color: var(--color-secondary);
+  background: var(--color-container-inset);
+  color: var(--color-primary);
+}
+
+.myfin-tabulator-shell .tabulator-row.tabulator-selected .tabulator-cell {
+  background: color-mix(in srgb, var(--color-info) 16%, var(--color-container));
+}

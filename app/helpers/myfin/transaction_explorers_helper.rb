@@ -1,4 +1,25 @@
 module Myfin::TransactionExplorersHelper
+  def transaction_explorer_tabulator_rows(rows)
+    rows.map do |row|
+      {
+        id: row.entry_id,
+        workflow_status: row.classification_status.to_s.humanize,
+        open_url: myfin_entry_classification_changes_path(row.entry_id),
+        type: row.type,
+        date: row.date.iso8601,
+        entity: row.entity_names.join(", "),
+        wdg_rollup: row.wdg_rollup || t("myfin.transaction_explorer.not_applicable"),
+        detail_category: row.detail_category,
+        tags: row.tag_names.join(", "),
+        description: row.description,
+        account: row.account_name,
+        amount: row.amount.to_f,
+        amount_display: format_money(Money.new(row.amount, Current.family.currency)),
+        editable: row.editable
+      }
+    end
+  end
+
   TransactionExplorerColumn = Data.define(:key, :default_width, :min_width)
   TRANSACTION_EXPLORER_COLUMNS = {
     "date" => TransactionExplorerColumn.new(key: "date", default_width: 140, min_width: 96),

@@ -40,8 +40,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     }
 
     assert_response :success
-    assert_select "tr[data-entry-id='#{personal_entry.id}']", count: 1
-    assert_select "tr[data-entry-id='#{donna_entry.id}']", count: 1
+    assert tabulator_row(personal_entry)
+    assert tabulator_row(donna_entry)
     assert_select "input[name='entity_ids[]'][value='#{@personal.id}']", checked: "checked"
     assert_select "input[name='entity_ids[]'][value='#{@donna.id}']", checked: "checked"
     assert_select "button[aria-label^='Reporting profile:']", count: 0
@@ -73,9 +73,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "fieldset[data-transaction-explorer-slicer-key-value='entity_ids']", text: /JPW/, count: 1
     assert_select "fieldset[data-transaction-explorer-slicer-key-value='entity_ids']", text: /CGI/, count: 1
     assert_select "fieldset[data-transaction-explorer-slicer-key-value='entity_ids']", text: /JPW Personal|Green Capital Investing/, count: 0
-    assert_select "tr[data-entry-id='#{personal_entry.id}']", text: /JPW/, count: 1
-    assert_select "tr[data-entry-id='#{gci_entry.id}']", text: /CGI/, count: 1
-    assert_select "tr[data-entry-id='#{gci_entry.id}']", text: /Green Capital Investing|\bGCI\b/, count: 0
+    assert_equal "JPW", tabulator_row(personal_entry).fetch("entity")
+    assert_equal "CGI", tabulator_row(gci_entry).fetch("entity")
   end
 
   test "renders one shared filtered set in the rollup and ledger" do
@@ -119,19 +118,18 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
       end
     end
     assert_select "[data-testid='transaction-explorer-shared-set'][data-ledger-count='1'][data-rollup-count='1']"
-    assert_select "[data-controller~='transaction-explorer-split']", count: 1
-    assert_select "[role='separator'][aria-label='Resize rollup panel']", count: 1
+    assert_select "[data-controller='transaction-explorer-tabulator']", count: 1
+    assert_select "[data-action='transaction-explorer-tabulator#toggleLayout']", text: "Layout", count: 1
+    assert_select "[data-action='transaction-explorer-tabulator#fitColumns']", text: /Fit columns/i, count: 1
+    assert_select "[data-action='transaction-explorer-tabulator#collapseAll']", text: /Collapse all/i, count: 1
     assert_select "[role='separator'][aria-label='Resize the assistant sidebar'] span.bg-secondary", count: 1
     assert_select "[data-testid='responsive-navigation-drawer']", count: 1
     assert_select "[data-testid='compact-navigation-rail']", count: 1 do
       assert_select "[data-action='app-layout#openMobileSidebar']", count: 1
     end
     assert_select "section", text: /Transactions\s+1\s+Expenses\s+\$120\.00\s+Income\s+\$0\.00\s+Transfer net\s+\$0\.00/
-    assert_select "section", text: /Expense\s+\$120\.00.*JPW\s+\$120\.00.*Groceries\s+\$120\.00/m
-    assert_select "a[href*='wdg_rollup_ids'] span[aria-hidden='true']", count: 0
-    assert_select "a[href*='detail_category_ids'] span[aria-hidden='true']", text: "🛒", minimum: 1
-    assert_select "tr[data-entry-id='#{personal_entry.id}']", count: 1
-    assert_select "tr[data-entry-id='#{gci_entry.id}']", count: 0
+    assert_equal "Groceries", tabulator_row(personal_entry).fetch("detail_category")
+    assert_nil tabulator_row(gci_entry)
     assert_select "a[href='#{myfin_transaction_explorer_path}']", text: /Explorer/
     assert_select "button[aria-label^='Reporting profile:']", count: 0
   end
@@ -149,7 +147,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "renders a semantic resizable category grid with edit controls" do
+  test "renders a full-height persistent Tabulator grid with desktop controls" do
     entry = create_classified_entry(
       account: accounts(:depository),
       entity: @personal,
@@ -163,45 +161,19 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path, params: { search: "grid" }
 
     assert_response :success
-    groceries_category = @family.myfin_category_schemes.find_by!(name: "JPW").scheme_categories.find_by!(name: "Groceries")
-    assert_select "div[data-controller~='transaction-explorer-grid']", count: 1 do
-      assert_select "table[class*='border-separate'][class*='border-spacing-0']", count: 1
-      assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 8
-      assert_select "colgroup col[data-column='entity-fixed'][style*='width: 84px']", count: 1
-      assert_select "th[data-column='catalog']", count: 0
-      assert_select "thead th", count: 8
-      assert_select "thead th[data-column='entity'] [data-transaction-explorer-columns-target='handle']", count: 0
-      assert_select "thead th:not([data-column='entity']) [data-transaction-explorer-columns-target='handle'][tabindex='0']", count: 7
-      assert_select "tr[data-entry-id='#{entry.id}'] td[data-column='wdg-rollup']", text: "Shopping", count: 1
-      assert_select "tr[data-entry-id='#{entry.id}'] td[data-column]", count: 8
-      assert_select "tr[data-entry-id='#{entry.id}'][class*='[&>td]:border-r']", count: 1
-      assert_select "tr[data-entry-id='#{entry.id}'] td[data-column='entity'] span[class*='rounded']", count: 0
-      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form", count: 0
-      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'][data-transaction-explorer-grid-target='cell'] form", count: 1
-      assert_select "tr[data-entry-id='#{entry.id}'] [data-controller='tag-select'][data-tag-select-update-url-value='#{tags_transaction_path(entry)}']", count: 1
-      assert_select "tr[data-entry-id='#{entry.id}'] input[data-tag-select-target='input'][placeholder='Add tags…']", count: 1
-      assert_select "tr[data-entry-id='#{entry.id}'] button[data-tag-select-target='button']", count: 0
-      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form[action*='search=grid'] input[name='scheme_id']", count: 1
-      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form select[name='category_id'] option[value='']", text: "Uncategorized", count: 1
-      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form select[name='category_id'] option[value=''][selected]", count: 0
-      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form select[name='category_id'] option[value='#{groceries_category.id}'][selected]", text: "Groceries", count: 1
-      assert_select "th[data-column='date'][style*='transaction-explorer-date-offset']", count: 1
-      assert_select "th[data-column='entity'][style*='transaction-explorer-entity-offset']", count: 1
+    assert_select "main[class*='overflow-hidden'][class*='min-h-0']", count: 1
+    assert_select "[data-controller='transaction-explorer-tabulator'][data-transaction-explorer-tabulator-persistence-id-value='myfin-transaction-explorer-v1']", count: 1 do
+      assert_select "[data-transaction-explorer-tabulator-target='grid']", count: 1
+      assert_select "[data-transaction-explorer-tabulator-target='sort']", count: 1
+      assert_select "button", text: "Layout", count: 1
+      assert_select "button", text: /Fit columns/i, count: 1
+      assert_select "button", text: /Collapse all/i, count: 1
+      assert_select "button", text: "Undo", count: 1
+      assert_select "button", text: "Redo", count: 1
     end
-    assert_select "#transaction-explorer-ledger[data-controller~='transaction-explorer-grid']", count: 0
-    assert_select "tr[data-entry-id='#{entry.id}'] td:first-child[style*='transaction-explorer-date-offset']", count: 1
-    assert_select "tr[data-entry-id='#{entry.id}'][class*='odd:bg-container'][class*='even:bg-container-inset']", count: 1
-    assert_select "tr[data-entry-id='#{entry.id}'][class*='[&>td:hover]:bg-surface-hover']", count: 1
-    assert_select "tr[data-entry-id='#{entry.id}'] td:nth-child(2)[style*='transaction-explorer-entity-offset']", count: 1
-    assert_select "button", text: "Edit categories", count: 1
-    assert_select "span[data-transaction-explorer-grid-target='editStatus'][role='status'][hidden]", text: /Editing on/, count: 1
-    assert_select "button[data-transaction-explorer-grid-target='undoButton'][aria-label='Undo'][disabled]", count: 1
-    assert_select "button[data-transaction-explorer-grid-target='redoButton'][aria-label='Redo'][disabled]", count: 1
-    assert_select "button[data-transaction-explorer-grid-target='fillButton'][disabled]", text: "Fill down", count: 1
-    assert_select "div[data-transaction-explorer-grid-batch-url-value='#{myfin_transaction_explorer_classification_batch_path(search: "grid")}']", count: 1
-    assert_select "span", text: /Shift-select.*Copy\/Paste/, count: 1
-    assert_select "button", text: "Recent changes", count: 1
-    assert_select "button", text: "Reset column widths", count: 1
+    row = tabulator_row(entry)
+    assert_equal "Shopping", row.fetch("wdg_rollup")
+    assert_equal "Groceries", row.fetch("detail_category")
   end
 
 
@@ -279,9 +251,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path
 
     assert_response :success
-    assert_select "tr[data-entry-id='#{editable_entry.id}'] td[data-scheme] form", count: 1
-    assert_select "tr[data-entry-id='#{read_only_entry.id}'] td[data-scheme] form", count: 0
-    assert_select "tr[data-entry-id='#{read_only_entry.id}'] td[data-scheme] [data-editor]", count: 0
+    assert tabulator_row(editable_entry).fetch("editable")
+    assert_not tabulator_row(read_only_entry).fetch("editable")
   end
 
   test "renders tag filters and names active exclusions" do
@@ -321,10 +292,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path
 
     assert_response :success
-    assert_select "th[data-column='catalog']", count: 0
-    assert_select "th[data-column='wdg_rollup']", count: 1
-    assert_select "tr[data-entry-id='#{entry.id}'] td[data-scheme='GCI'] form", count: 1
-    assert_select "tr[data-entry-id='#{entry.id}'] [data-column='tags']", count: 1
+    assert_equal "CGI", tabulator_row(entry).fetch("entity")
+    assert_equal "Business Software", tabulator_row(entry).fetch("detail_category")
   end
 
   test "Everything keeps same-named JPW and DIS categories separate" do
@@ -352,9 +321,9 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path
 
     assert_response :success
-    assert_select "th[data-column='catalog']", count: 0
-    assert_select "tr[data-entry-id='#{jpw_entry.id}'] td[data-scheme='JPW']", text: /Shared display Shopping/, count: 1
-    assert_select "tr[data-entry-id='#{donna_entry.id}'] td[data-scheme='DIS']", text: /Shared display Shopping/, count: 1
+    assert_equal "Shared display Shopping", tabulator_row(jpw_entry).fetch("detail_category")
+    assert_equal "Shared display Shopping", tabulator_row(donna_entry).fetch("detail_category")
+    assert_not_equal tabulator_row(jpw_entry).fetch("entity"), tabulator_row(donna_entry).fetch("entity")
   end
 
   test "global WDG profile does not hide other entities from Explorer" do
@@ -381,8 +350,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path
 
     assert_response :success
-    assert_select "tr[data-entry-id='#{personal_entry.id}']", count: 1
-    assert_select "tr[data-entry-id='#{gci_entry.id}']", count: 1
+    assert tabulator_row(personal_entry)
+    assert tabulator_row(gci_entry)
     assert_select "input[name='wdg_rollup_ids[]']", minimum: 1
   end
 
@@ -425,9 +394,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path
 
     assert_response :success
-    assert_select "tr[data-entry-id='#{entry.id}'] a[href='#{myfin_entry_classification_changes_path(entry)}'][data-turbo-frame='drawer']", count: 1
-    assert_select "tr[data-entry-id='#{read_only_entry.id}'] a[href*='classification_changes']", count: 0
-    assert_select "form[action='#{myfin_classification_changes_path}'] button[data-turbo-frame='drawer']", count: 1
+    assert_equal myfin_entry_classification_changes_path(entry), tabulator_row(entry).fetch("open_url")
+    assert_not tabulator_row(read_only_entry).fetch("editable")
   end
 
   test "renders the committed change ID in the edit result for undo" do
@@ -457,6 +425,15 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
   end
 
   private
+    def rendered_tabulator_rows
+      node = css_select("template[data-transaction-explorer-tabulator-target='data']").first
+      JSON.parse(node.content)
+    end
+
+    def tabulator_row(entry)
+      rendered_tabulator_rows.find { |row| row.fetch("id") == entry.id }
+    end
+
     def select_profile(name)
       profile = @family.myfin_reporting_profiles.find_by!(name: name)
       patch myfin_reporting_profile_path,
