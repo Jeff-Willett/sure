@@ -165,6 +165,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     groceries_category = @family.myfin_category_schemes.find_by!(name: "JPW").scheme_categories.find_by!(name: "Groceries")
     assert_select "div[data-controller~='transaction-explorer-grid']", count: 1 do
+      assert_select "table[class*='border-separate'][class*='border-spacing-0']", count: 1
       assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 8
       assert_select "colgroup col[data-column='entity-fixed'][style*='width: 84px']", count: 1
       assert_select "th[data-column='catalog']", count: 0
@@ -172,6 +173,9 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
       assert_select "thead th[data-column='entity'] [data-transaction-explorer-columns-target='handle']", count: 0
       assert_select "thead th:not([data-column='entity']) [data-transaction-explorer-columns-target='handle'][tabindex='0']", count: 7
       assert_select "tr[data-entry-id='#{entry.id}'] td[data-column='wdg-rollup']", text: "Shopping", count: 1
+      assert_select "tr[data-entry-id='#{entry.id}'] td[data-column]", count: 8
+      assert_select "tr[data-entry-id='#{entry.id}'][class*='[&>td]:border-r']", count: 1
+      assert_select "tr[data-entry-id='#{entry.id}'] td[data-column='entity'] span[class*='rounded']", count: 0
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form", count: 0
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'][data-transaction-explorer-grid-target='cell'] form", count: 1
       assert_select "tr[data-entry-id='#{entry.id}'] [data-controller='tag-select'][data-tag-select-update-url-value='#{tags_transaction_path(entry)}']", count: 1
@@ -187,7 +191,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "#transaction-explorer-ledger[data-controller~='transaction-explorer-grid']", count: 0
     assert_select "tr[data-entry-id='#{entry.id}'] td:first-child[style*='transaction-explorer-date-offset']", count: 1
     assert_select "tr[data-entry-id='#{entry.id}'][class*='odd:bg-container'][class*='even:bg-container-inset']", count: 1
-    assert_select "tr[data-entry-id='#{entry.id}'] td[class*='hover:bg-surface-hover']", minimum: 1
+    assert_select "tr[data-entry-id='#{entry.id}'][class*='[&>td:hover]:bg-surface-hover']", count: 1
     assert_select "tr[data-entry-id='#{entry.id}'] td:nth-child(2)[style*='transaction-explorer-entity-offset']", count: 1
     assert_select "button", text: "Edit categories", count: 1
     assert_select "span[data-transaction-explorer-grid-target='editStatus'][role='status'][hidden]", text: /Editing on/, count: 1

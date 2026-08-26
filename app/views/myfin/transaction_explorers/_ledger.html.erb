@@ -85,7 +85,7 @@
     <div
       class="table-scroll max-h-[calc(100vh-10rem)] overflow-auto [--table-scroll-bg:var(--color-container)]"
       data-transaction-explorer-grid-target="scroll">
-      <table class="w-full min-w-[1380px] text-sm" data-transaction-explorer-grid-target="table">
+      <table class="w-full min-w-[1380px] border-separate border-spacing-0 text-sm" data-transaction-explorer-grid-target="table">
         <colgroup data-transaction-explorer-columns-target="colgroup">
           <% columns.each do |column| %>
             <col data-column="<%= column.key == "entity" ? "entity-fixed" : column.key %>" style="width: <%= column.default_width %>px">
@@ -97,7 +97,7 @@
               <% sticky = column.key.in?(%w[date entity]) %>
               <% sticky_offset = column.key == "date" ? "var(--transaction-explorer-date-offset, 0px)" : "var(--transaction-explorer-entity-offset, 140px)" if sticky %>
               <th
-                class="relative px-3 py-2 font-medium <%= column.key == "amount" ? "text-right" : "" %> <%= "@3xl:sticky @3xl:z-20 @3xl:bg-container" if sticky %>"
+                class="relative border-b border-r border-secondary bg-container-inset px-2 py-1.5 font-medium last:border-r-0 <%= column.key == "amount" ? "text-right" : "" %> <%= "@3xl:sticky @3xl:z-20" if sticky %>"
                 data-column="<%= column.key %>"
                 style="<%= "left: #{sticky_offset}" if sticky %>">
                 <span><%= t("myfin.transaction_explorer.columns.#{column.key}") %></span>
@@ -118,17 +118,17 @@
         </thead>
         <tbody>
           <% rows.each do |row| %>
-            <tr class="border-b border-tertiary odd:bg-container even:bg-container-inset [&>td]:transition-colors [&>td:hover]:bg-surface-hover motion-reduce:[&>td]:transition-none" data-entry-id="<%= row.entry_id %>">
-              <td class="whitespace-nowrap px-2.5 py-1.5 text-secondary hover:bg-surface-hover @3xl:sticky @3xl:left-0 @3xl:z-10 @3xl:bg-inherit" style="left: var(--transaction-explorer-date-offset, 0px)"><%= l(row.date, format: :short) %></td>
-              <td class="px-2.5 py-1.5 hover:bg-surface-hover @3xl:sticky @3xl:z-10 @3xl:bg-inherit" style="left: var(--transaction-explorer-entity-offset, 140px)">
+            <tr class="odd:bg-container even:bg-container-inset [&>td]:border-b [&>td]:border-r [&>td]:border-tertiary [&>td]:bg-inherit [&>td]:transition-colors [&>td:last-child]:border-r-0 [&>td:hover]:bg-surface-hover [&>td:focus-within]:bg-container [&>td:focus-within]:outline [&>td:focus-within]:outline-2 [&>td:focus-within]:-outline-offset-2 [&>td:focus-within]:outline-info motion-reduce:[&>td]:transition-none" data-entry-id="<%= row.entry_id %>">
+              <td class="whitespace-nowrap px-2 py-1.5 text-secondary @3xl:sticky @3xl:left-0 @3xl:z-10 @3xl:bg-inherit" data-column="date" style="left: var(--transaction-explorer-date-offset, 0px)"><%= l(row.date, format: :short) %></td>
+              <td class="px-2 py-1.5 text-xs font-medium text-secondary @3xl:sticky @3xl:z-10 @3xl:bg-inherit" data-column="entity" style="left: var(--transaction-explorer-entity-offset, 140px)">
                 <div class="flex flex-wrap gap-1">
                   <% row.entity_names.each do |entity_name| %>
-                    <span class="rounded-md bg-container-inset px-2 py-0.5 text-xs text-secondary"><%= entity_name %></span>
+                    <span><%= entity_name %></span>
                   <% end %>
                 </div>
               </td>
               <% if column_keys.include?("wdg_rollup") %>
-                <td class="px-3 py-2 text-primary" data-column="wdg-rollup">
+                <td class="px-2 py-1.5 text-primary" data-column="wdg-rollup">
                   <%= row.wdg_rollup || t("myfin.transaction_explorer.not_applicable") %>
                 </td>
               <% end %>
@@ -140,11 +140,11 @@
                       label: row.detail_category,
                       category_options: category_options %>
               <% else %>
-                <td class="px-3 py-2 text-secondary" data-column="detail-category">
+                <td class="px-2 py-1.5 text-secondary" data-column="detail-category">
                   <%= row.detail_category %>
                 </td>
               <% end %>
-              <td class="px-3 py-2 text-primary" data-column="tags">
+              <td class="p-0 text-primary" data-column="tags">
                 <%= form_with scope: :transaction,
                       url: tags_transaction_path(row.entry_id),
                       method: :patch do |form| %>
@@ -160,7 +160,7 @@
                   ) %>
                 <% end %>
               </td>
-              <td class="min-w-56 px-3 py-2 text-primary">
+              <td class="min-w-56 px-2 py-1.5 text-primary" data-column="description">
                 <%= row.description %>
                 <span class="mt-0.5 block text-xs text-secondary"><%= row.type %></span>
                 <% if row.editable %>
@@ -170,8 +170,8 @@
                     data: { turbo_frame: "drawer", turbo_prefetch: false } %>
                 <% end %>
               </td>
-              <td class="px-3 py-2 text-secondary"><%= row.account_name %></td>
-              <td class="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums <%= row.amount.negative? ? "text-destructive" : "text-success" %>">
+              <td class="px-2 py-1.5 text-secondary" data-column="account"><%= row.account_name %></td>
+              <td class="whitespace-nowrap px-2 py-1.5 text-right font-medium tabular-nums <%= row.amount.negative? ? "text-destructive" : "text-success" %>" data-column="amount">
                 <%= format_money(Money.new(row.amount, Current.family.currency)) %>
               </td>
             </tr>
