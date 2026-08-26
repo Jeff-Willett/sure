@@ -105,6 +105,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     }
 
     assert_response :success
+    assert_includes response.body, '"utils/tag_input"'
     assert_select "h1.sr-only", text: "Transaction Explorer"
     assert_select "main", text: /Working frame/, count: 0
     assert_select "input[name='entity_ids[]'][value='#{@personal.id}']", checked: "checked"
