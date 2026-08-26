@@ -27,8 +27,7 @@ module Myfin
       @change = results.last.change
       @report = TransactionExplorersController.report_for(
         user: Current.user,
-        params: params,
-        profile: current_myfin_profile
+        params: params
       )
       @visible_rows = @report.rows.first(TransactionExplorersController::MAX_VISIBLE_ROWS)
       @entry_id = last_edit.fetch(:entry).id

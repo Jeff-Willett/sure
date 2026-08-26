@@ -6,8 +6,45 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     @family = @user.family
     Myfin::BootstrapFamily.call(family: @family)
     @personal = @family.myfin_entities.find_by!(name: "JPW Personal")
+    @donna = @family.myfin_entities.find_by!(name: "Donna")
     @gci = @family.myfin_entities.find_by!(name: "Green Capital Investing")
     sign_in @user
+  end
+
+  test "entity filters can combine entities regardless of the global reporting profile" do
+    personal_entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 5),
+      name: "Combined JPW expense",
+      amount: 120,
+      wdg: "Shopping",
+      jpw: "Shopping"
+    )
+    donna_entry = create_classified_entry(
+      account: accounts(:credit_card),
+      entity: @donna,
+      date: Date.new(2026, 8, 6),
+      name: "Combined Donna expense",
+      amount: 75,
+      wdg: nil,
+      jpw: "Shopping"
+    )
+    gci_profile = @family.myfin_reporting_profiles.find_by!(name: "Green Capital Investing")
+    patch myfin_reporting_profile_path, params: { profile_id: gci_profile.id }
+
+    get myfin_transaction_explorer_path, params: {
+      entity_ids: [ @personal.id, @donna.id ],
+      years: [ 2026 ],
+      months: [ 8 ]
+    }
+
+    assert_response :success
+    assert_select "tr[data-entry-id='#{personal_entry.id}']", count: 1
+    assert_select "tr[data-entry-id='#{donna_entry.id}']", count: 1
+    assert_select "input[name='entity_ids[]'][value='#{@personal.id}']", checked: "checked"
+    assert_select "input[name='entity_ids[]'][value='#{@donna.id}']", checked: "checked"
+    assert_select "button[aria-label^='Reporting profile:']", count: 0
   end
 
   test "renders one shared filtered set in the rollup and ledger" do
@@ -64,7 +101,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-entry-id='#{personal_entry.id}']", count: 1
     assert_select "tr[data-entry-id='#{gci_entry.id}']", count: 0
     assert_select "a[href='#{myfin_transaction_explorer_path}']", text: /Explorer/
-    assert_select "button[aria-label='Reporting profile: JPW Personal']", count: 1
+    assert_select "button[aria-label^='Reporting profile:']", count: 0
   end
 
   test "keeps the category panel open after a category filter submission" do
@@ -96,8 +133,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     groceries_category = @family.myfin_category_schemes.find_by!(name: "JPW").scheme_categories.find_by!(name: "Groceries")
     assert_select "div[data-controller~='transaction-explorer-grid']", count: 1 do
-      assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 8
-      assert_select "thead th", count: 8 do |headers|
+      assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 9
+      assert_select "thead th", count: 9 do |headers|
         headers.each do |header|
           assert_select header, "[data-transaction-explorer-columns-target='handle'][tabindex='0']", count: 1
         end
@@ -193,7 +230,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-entry-id='#{entry.id}']", count: 0
   end
 
-  test "GCI profile hides WDG and edits the GCI catalog" do
+  test "entity filters replace profile scoping while preserving GCI editing" do
     entry = create_classified_entry(
       account: accounts(:credit_card),
       entity: @gci,
@@ -208,7 +245,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path
 
     assert_response :success
-    assert_select "th[data-column='wdg_rollup']", count: 0
+    assert_select "th[data-column='catalog']", count: 1
+    assert_select "th[data-column='wdg_rollup']", count: 1
     assert_select "tr[data-entry-id='#{entry.id}'] td[data-scheme='GCI'] form", count: 1
     assert_select "tr[data-entry-id='#{entry.id}'] [data-column='tags']", count: 1
   end
@@ -243,7 +281,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-entry-id='#{donna_entry.id}'] td[data-scheme='DIS']", text: /Shared display Shopping/, count: 1
   end
 
-  test "WDG Report contains JPW entries and uses durable rollup links" do
+  test "global WDG profile does not hide other entities from Explorer" do
     personal_entry = create_classified_entry(
       account: accounts(:depository),
       entity: @personal,
@@ -268,8 +306,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "tr[data-entry-id='#{personal_entry.id}']", count: 1
-    assert_select "tr[data-entry-id='#{gci_entry.id}']", count: 0
-    assert_select "a[href*='wdg_rollup_ids']", text: /Shopping/, minimum: 1
+    assert_select "tr[data-entry-id='#{gci_entry.id}']", count: 1
+    assert_select "input[name='wdg_rollup_ids[]']", minimum: 1
   end
 
   test "renders scoped history for editable rows and recent changes in the drawer" do

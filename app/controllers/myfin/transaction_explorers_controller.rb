@@ -3,7 +3,7 @@ module Myfin
     MAX_VISIBLE_ROWS = 250
 
     def show
-      @report = self.class.report_for(user: Current.user, params: params, profile: current_myfin_profile)
+      @report = self.class.report_for(user: Current.user, params: params)
       @visible_rows = @report.rows.first(MAX_VISIBLE_ROWS)
       @breadcrumbs = [
         [ t("breadcrumbs.home"), root_path ],
@@ -11,8 +11,9 @@ module Myfin
       ]
     end
 
-    def self.report_for(user:, params:, profile: nil)
+    def self.report_for(user:, params:)
       filters = Myfin::TransactionExplorer::Filters.from_params(filter_params(params))
+      profile = user.family.myfin_reporting_profiles.find_by(name: "Everything")
       Myfin::TransactionExplorer::Report.call(user: user, filters: filters, profile: profile)
     end
 
