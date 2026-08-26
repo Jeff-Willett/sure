@@ -21,7 +21,7 @@ class MyfinReportingProfilesTest < ApplicationSystemTestCase
     assert_text @personal_entry.name
     assert_no_text @business_entry.name
 
-    click_button "My Personal Finances"
+    click_button "JPW Personal"
     click_button "Green Capital Investing"
 
     assert_text @business_entry.name

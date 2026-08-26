@@ -44,7 +44,7 @@
     </div>
   </div>
 
-  <details <%= "open" if %i[wdg_categories jpw_categories include_tag_ids exclude_tag_ids].any? { |key| params.key?(key) } %> class="group border-t border-secondary bg-container-inset">
+  <details <%= "open" if %i[detail_category_ids wdg_rollup_ids include_tag_ids exclude_tag_ids].any? { |key| params.key?(key) } %> class="group border-t border-secondary bg-container-inset">
     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2 text-xs font-medium text-secondary transition-colors hover:bg-container-inset-hover hover:text-primary focus-ring motion-reduce:transition-none">
       <span class="inline-flex items-center gap-2">
         <%= icon("sliders-horizontal", size: "sm") %>
@@ -54,21 +54,25 @@
     </summary>
     <div class="grid border-t border-secondary @4xl:grid-cols-2 @4xl:divide-x @4xl:divide-secondary">
       <%= render "myfin/transaction_explorers/slicer",
-            label: t("myfin.transaction_explorer.filters.wdg"),
-            key: :wdg_categories,
-            options: filter_options.wdg_categories.map { |category| [ category, category ] },
-            selected: selected_filters[:wdg_categories],
-            available: report.category_availability[:wdg_categories],
-            explicit: params.key?(:wdg_categories),
+            label: t("myfin.transaction_explorer.filters.detail_category"),
+            key: :detail_category_ids,
+            options: filter_options.detail_categories.map { |id, scheme, name|
+              [ id, report.profile_name == "Everything" ? "#{scheme} · #{name}" : name ]
+            },
+            selected: selected_filters[:detail_category_ids],
+            available: report.category_availability[:detail_category_ids],
+            explicit: params.key?(:detail_category_ids),
             inline: true %>
-      <%= render "myfin/transaction_explorers/slicer",
-            label: t("myfin.transaction_explorer.filters.jpw"),
-            key: :jpw_categories,
-            options: filter_options.jpw_categories.map { |category| [ category, category ] },
-            selected: selected_filters[:jpw_categories],
-            available: report.category_availability[:jpw_categories],
-            explicit: params.key?(:jpw_categories),
-            inline: true %>
+      <% if filter_options.wdg_rollups.any? %>
+        <%= render "myfin/transaction_explorers/slicer",
+              label: t("myfin.transaction_explorer.filters.wdg_rollup"),
+              key: :wdg_rollup_ids,
+              options: filter_options.wdg_rollups,
+              selected: selected_filters[:wdg_rollup_ids],
+              available: report.category_availability[:wdg_rollup_ids],
+              explicit: params.key?(:wdg_rollup_ids),
+              inline: true %>
+      <% end %>
       <%= render "myfin/transaction_explorers/slicer",
             label: t("myfin.transaction_explorer.filters.include_tags"),
             key: :include_tag_ids,

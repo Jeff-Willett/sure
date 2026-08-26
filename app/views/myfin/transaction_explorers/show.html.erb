@@ -1,5 +1,3 @@
-<% content_for :hide_myfin_profile_selector, true %>
-
 <div class="@container pb-8 lg:-mx-10">
   <h1 class="sr-only"><%= t("myfin.transaction_explorer.title") %></h1>
 
@@ -43,7 +41,7 @@
     data-transaction-explorer-grid-no-changes-message-value="<%= t("myfin.transaction_explorer.no_batch_changes") %>"
     data-transaction-explorer-grid-updated-message-value="<%= t("myfin.transaction_explorer.updated_cells", count: "__COUNT__") %>">
     <div id="transaction-explorer-rollup">
-      <%= render "rollup", rollup: @report.rollup %>
+      <%= render "rollup", rollup: @report.rollup, rollup_mode: @report.rollup_mode %>
     </div>
     <div
       class="group relative hidden h-full cursor-col-resize bg-container @3xl:block"
@@ -60,7 +58,8 @@
             rows: @visible_rows,
             total_count: @report.rows.size,
             category_options: @report.category_options,
-            tag_options: @report.tag_options %>
+            tag_options: @report.tag_options,
+            report: @report %>
     </div>
   </div>
 

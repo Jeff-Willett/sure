@@ -58,23 +58,25 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
       assert_select "[data-action='app-layout#openMobileSidebar']", count: 1
     end
     assert_select "section", text: /Transactions\s+1\s+Expenses\s+\$120\.00\s+Income\s+\$0\.00\s+Transfer net\s+\$0\.00/
-    assert_select "section", text: /Expense\s+\$120\.00.*Shopping\s+\$120\.00.*Groceries\s+\$120\.00/m
-    assert_select "a[href*='wdg_categories'] span[aria-hidden='true']", count: 0
-    assert_select "a[href*='jpw_categories'] span[aria-hidden='true']", text: "🛒", minimum: 1
+    assert_select "section", text: /Expense\s+\$120\.00.*JPW Personal\s+\$120\.00.*Groceries\s+\$120\.00/m
+    assert_select "a[href*='wdg_rollup_ids'] span[aria-hidden='true']", count: 0
+    assert_select "a[href*='detail_category_ids'] span[aria-hidden='true']", text: "🛒", minimum: 1
     assert_select "tr[data-entry-id='#{personal_entry.id}']", count: 1
     assert_select "tr[data-entry-id='#{gci_entry.id}']", count: 0
     assert_select "a[href='#{myfin_transaction_explorer_path}']", text: /Explorer/
-    assert_select "button[aria-label^='Reporting profile:']", count: 0
+    assert_select "button[aria-label='Reporting profile: JPW Personal']", count: 1
   end
 
   test "keeps the category panel open after a category filter submission" do
+    category = @family.myfin_category_schemes.find_by!(name: "JPW")
+      .scheme_categories.create!(name: "Panel category")
     get myfin_transaction_explorer_path, params: {
-      jpw_categories: [ "Renter Expenses" ]
+      detail_category_ids: [ category.id ]
     }
 
     assert_response :success
     assert_select "details[open]", count: 1 do
-      assert_select "summary", text: /WDG and JPW categories/
+      assert_select "summary", text: /Categories and tags/
     end
   end
 
@@ -191,6 +193,85 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-entry-id='#{entry.id}']", count: 0
   end
 
+  test "GCI profile hides WDG and edits the GCI catalog" do
+    entry = create_classified_entry(
+      account: accounts(:credit_card),
+      entity: @gci,
+      date: Date.new(2026, 8, 9),
+      name: "GCI profile expense",
+      amount: 25,
+      wdg: "Ignored WDG",
+      jpw: "Business Software"
+    )
+    select_profile("Green Capital Investing")
+
+    get myfin_transaction_explorer_path
+
+    assert_response :success
+    assert_select "th[data-column='wdg_rollup']", count: 0
+    assert_select "tr[data-entry-id='#{entry.id}'] td[data-scheme='GCI'] form", count: 1
+    assert_select "tr[data-entry-id='#{entry.id}'] [data-column='tags']", count: 1
+  end
+
+  test "Everything keeps same-named JPW and DIS categories separate" do
+    jpw_entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 10),
+      name: "JPW Shopping example",
+      amount: 90,
+      wdg: "Shopping",
+      jpw: "Shared display Shopping"
+    )
+    donna = @family.myfin_entities.find_by!(name: "Donna")
+    donna_entry = create_classified_entry(
+      account: accounts(:credit_card),
+      entity: donna,
+      date: Date.new(2026, 8, 10),
+      name: "Donna Shopping example",
+      amount: 50,
+      wdg: "Ignored WDG",
+      jpw: "Shared display Shopping"
+    )
+    select_profile("Everything")
+
+    get myfin_transaction_explorer_path
+
+    assert_response :success
+    assert_select "th[data-column='catalog']", text: "Catalog", count: 1
+    assert_select "tr[data-entry-id='#{jpw_entry.id}'] td[data-scheme='JPW']", text: /Shared display Shopping/, count: 1
+    assert_select "tr[data-entry-id='#{donna_entry.id}'] td[data-scheme='DIS']", text: /Shared display Shopping/, count: 1
+  end
+
+  test "WDG Report contains JPW entries and uses durable rollup links" do
+    personal_entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 11),
+      name: "WDG personal example",
+      amount: 90,
+      wdg: "Shopping",
+      jpw: "Restaurants"
+    )
+    gci_entry = create_classified_entry(
+      account: accounts(:credit_card),
+      entity: @gci,
+      date: Date.new(2026, 8, 11),
+      name: "WDG excluded GCI example",
+      amount: 25,
+      wdg: "Ignored WDG",
+      jpw: "Business Software"
+    )
+    select_profile("WDG Report")
+
+    get myfin_transaction_explorer_path
+
+    assert_response :success
+    assert_select "tr[data-entry-id='#{personal_entry.id}']", count: 1
+    assert_select "tr[data-entry-id='#{gci_entry.id}']", count: 0
+    assert_select "a[href*='wdg_rollup_ids']", text: /Shopping/, minimum: 1
+  end
+
   test "renders scoped history for editable rows and recent changes in the drawer" do
     entry = create_classified_entry(
       account: accounts(:depository),
@@ -262,6 +343,14 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
   end
 
   private
+    def select_profile(name)
+      profile = @family.myfin_reporting_profiles.find_by!(name: name)
+      patch myfin_reporting_profile_path,
+        params: { profile_id: profile.id },
+        headers: { "HTTP_REFERER" => myfin_transaction_explorer_url }
+      assert_response :redirect
+    end
+
     def create_classified_entry(account:, entity:, date:, name:, amount:, wdg:, jpw:)
       entry = account.entries.create!(
         entryable: Transaction.new,

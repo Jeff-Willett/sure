@@ -4,6 +4,10 @@ export const TRANSACTION_EXPLORER_COLUMN_WIDTHS_KEY =
 export const TRANSACTION_EXPLORER_COLUMNS = {
   date: { defaultWidth: 140, minWidth: 96 },
   entity: { defaultWidth: 260, minWidth: 180 },
+  catalog: { defaultWidth: 120, minWidth: 96 },
+  wdg_rollup: { defaultWidth: 180, minWidth: 140 },
+  detail_category: { defaultWidth: 180, minWidth: 140 },
+  tags: { defaultWidth: 240, minWidth: 180 },
   wdg: { defaultWidth: 180, minWidth: 140 },
   jpw: { defaultWidth: 180, minWidth: 140 },
   description: { defaultWidth: 360, minWidth: 220 },

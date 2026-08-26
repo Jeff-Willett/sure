@@ -1,6 +1,9 @@
-<%# locals: (rows:, total_count:, category_options: nil, tag_options: nil) %>
+<%# locals: (rows:, total_count:, category_options: nil, tag_options: nil, report: nil) %>
+<% report ||= @report %>
 <% category_options ||= @report&.category_options || {} %>
 <% tag_options ||= @report&.tag_options || [] %>
+<% columns = transaction_explorer_columns(report) %>
+<% column_keys = columns.map(&:key).to_set %>
 
 <section
   class="min-w-0 bg-container">
@@ -84,13 +87,13 @@
       data-transaction-explorer-grid-target="scroll">
       <table class="w-full min-w-[1490px] text-sm" data-transaction-explorer-grid-target="table">
         <colgroup data-transaction-explorer-columns-target="colgroup">
-          <% transaction_explorer_columns.each do |column| %>
+          <% columns.each do |column| %>
             <col data-column="<%= column.key %>" style="width: <%= column.default_width %>px">
           <% end %>
         </colgroup>
         <thead class="sticky top-0 z-10 bg-container text-left text-xs text-secondary shadow-border-xs">
           <tr>
-            <% transaction_explorer_columns.each do |column| %>
+            <% columns.each do |column| %>
               <% sticky = column.key.in?(%w[date entity]) %>
               <% sticky_offset = column.key == "date" ? "var(--transaction-explorer-date-offset, 0px)" : "var(--transaction-explorer-entity-offset, 140px)" if sticky %>
               <th
@@ -122,9 +125,16 @@
                   <% end %>
                 </div>
               </td>
-              <td class="px-3 py-2 text-primary" data-column="wdg-rollup">
-                <%= row.wdg_rollup || t("myfin.transaction_explorer.not_applicable") %>
-              </td>
+              <% if column_keys.include?("catalog") %>
+                <td class="px-3 py-2 text-secondary" data-column="catalog">
+                  <%= row.detail_scheme_name || t("myfin.transaction_explorer.not_applicable") %>
+                </td>
+              <% end %>
+              <% if column_keys.include?("wdg_rollup") %>
+                <td class="px-3 py-2 text-primary" data-column="wdg-rollup">
+                  <%= row.wdg_rollup || t("myfin.transaction_explorer.not_applicable") %>
+                </td>
+              <% end %>
               <% if row.detail_scheme_name %>
                 <%= render "myfin/transaction_explorers/category_cell",
                       row: row,

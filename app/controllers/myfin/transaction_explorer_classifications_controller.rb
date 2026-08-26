@@ -19,7 +19,11 @@ module Myfin
       )
       @change = result.change
 
-      @report = TransactionExplorersController.report_for(user: Current.user, params: params)
+      @report = TransactionExplorersController.report_for(
+        user: Current.user,
+        params: params,
+        profile: current_myfin_profile
+      )
       @visible_rows = @report.rows.first(TransactionExplorersController::MAX_VISIBLE_ROWS)
       @entry_id = entry.id
       @scheme_name = scheme.name

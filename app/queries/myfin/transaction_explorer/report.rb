@@ -30,8 +30,8 @@ module Myfin
         :editable
       )
       Metrics = Data.define(:transactions, :expenses, :income, :transfer_net)
-      RollupCategory = Data.define(:jpw, :amount, :count)
-      RollupGroup = Data.define(:wdg, :amount, :categories)
+      RollupCategory = Data.define(:jpw, :detail_category_id, :amount, :count)
+      RollupGroup = Data.define(:wdg, :entity_id, :wdg_rollup_id, :amount, :categories)
       RollupType = Data.define(:type, :amount, :groups)
       FilterOptions = Data.define(
         :entities,
@@ -54,7 +54,9 @@ module Myfin
         :category_availability,
         :rollup_mode,
         :tag_options,
-        :excluded_tag_names
+        :excluded_tag_names,
+        :profile_name,
+        :profile_scheme_name
       )
 
       TYPE_ORDER = { "Expense" => 0, "Income" => 1, "Transfer" => 2 }.freeze
@@ -86,7 +88,9 @@ module Myfin
           category_availability: build_category_availability(build_rows(selected_entity_ids)),
           rollup_mode: rollup_mode,
           tag_options: user.family.tags.alphabetically.to_a,
-          excluded_tag_names: user.family.tags.where(id: exclude_tag_ids).alphabetically.pluck(:name)
+          excluded_tag_names: user.family.tags.where(id: exclude_tag_ids).alphabetically.pluck(:name),
+          profile_name: profile&.name,
+          profile_scheme_name: profile&.preferred_category_scheme&.name
         )
       end
 
@@ -259,21 +263,7 @@ module Myfin
 
         def build_rollup(rows)
           rows.group_by(&:type).map do |type, type_rows|
-            groups = type_rows.group_by(&:wdg).map do |wdg, group_rows|
-              categories = group_rows.group_by(&:jpw).map do |jpw, category_rows|
-                RollupCategory.new(
-                  jpw: jpw,
-                  amount: category_rows.sum(BigDecimal("0"), &:amount),
-                  count: category_rows.size
-                )
-              end.sort_by { |category| [ -category.amount.abs, category.jpw ] }
-
-              RollupGroup.new(
-                wdg: wdg,
-                amount: group_rows.sum(BigDecimal("0"), &:amount),
-                categories: categories
-              )
-            end.sort_by { |group| [ -group.amount.abs, group.wdg ] }
+            groups = rollup_mode == "wdg" ? build_wdg_groups(type_rows) : build_entity_groups(type_rows)
 
             RollupType.new(
               type: type,
@@ -281,6 +271,47 @@ module Myfin
               groups: groups
             )
           end.sort_by { |rollup| TYPE_ORDER.fetch(rollup.type, 99) }
+        end
+
+        def build_wdg_groups(rows)
+          rows.group_by { |row| [ row.wdg_rollup_id || row.wdg_category_id, row.wdg_rollup || row.wdg ] }
+            .map do |(rollup_id, label), group_rows|
+              RollupGroup.new(
+                wdg: label,
+                entity_id: nil,
+                wdg_rollup_id: rollup_id,
+                amount: group_rows.sum(BigDecimal("0"), &:amount),
+                categories: build_rollup_categories(group_rows)
+              )
+            end
+            .sort_by { |group| [ -group.amount.abs, group.wdg ] }
+        end
+
+        def build_entity_groups(rows)
+          rows.group_by { |row| [ row.entity_id, row.entity_name || "Needs entity" ] }
+            .map do |(entity_id, label), group_rows|
+              RollupGroup.new(
+                wdg: label,
+                entity_id: entity_id,
+                wdg_rollup_id: nil,
+                amount: group_rows.sum(BigDecimal("0"), &:amount),
+                categories: build_rollup_categories(group_rows)
+              )
+            end
+            .sort_by { |group| [ -group.amount.abs, group.wdg ] }
+        end
+
+        def build_rollup_categories(rows)
+          rows.group_by do |row|
+            [ row.detail_category_id || row.jpw_category_id, row.detail_category || row.jpw ]
+          end.map do |(category_id, label), category_rows|
+            RollupCategory.new(
+              jpw: label,
+              detail_category_id: category_id,
+              amount: category_rows.sum(BigDecimal("0"), &:amount),
+              count: category_rows.size
+            )
+          end.sort_by { |category| [ -category.amount.abs, category.jpw ] }
         end
 
         def build_filter_options(rows)
@@ -379,7 +410,9 @@ module Myfin
         end
 
         def rollup_mode
-          profile&.preferred_category_scheme&.name == "WDG" ? "wdg" : "entity"
+          return "wdg" if profile.nil? || profile.preferred_category_scheme&.name == "WDG"
+
+          "entity"
         end
     end
   end
