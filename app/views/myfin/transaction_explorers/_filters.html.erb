@@ -19,28 +19,32 @@
           options: filter_options.entities,
           selected: selected_filters[:entity_ids],
           inline: true,
-          compact: true %>
+          compact: true,
+          nowrap: true %>
     <%= render "myfin/transaction_explorers/slicer",
           label: t("myfin.transaction_explorer.filters.years"),
           key: :years,
           options: filter_options.years.map { |year| [ year, year ] },
           selected: selected_filters[:years],
           inline: true,
-          compact: true %>
+          compact: true,
+          nowrap: true %>
     <%= render "myfin/transaction_explorers/slicer",
           label: t("myfin.transaction_explorer.filters.months"),
           key: :months,
           options: filter_options.months.map { |month| [ month, Date::ABBR_MONTHNAMES.fetch(month) ] },
           selected: selected_filters[:months],
           inline: true,
-          compact: true %>
+          compact: true,
+          nowrap: true %>
     <%= render "myfin/transaction_explorers/slicer",
           label: t("myfin.transaction_explorer.filters.types"),
           key: :types,
           options: filter_options.types.map { |type| [ type, type ] },
           selected: selected_filters[:types],
           inline: true,
-          compact: true %>
+          compact: true,
+          nowrap: true %>
 
     <div class="flex min-w-64 flex-1 items-center gap-2 bg-container px-2 py-1">
       <%= render DS::SearchInput.new(
@@ -75,6 +79,7 @@
               available: report.category_availability[:detail_category_ids],
               explicit: params.key?(:detail_category_ids),
               inline: true,
+              compact: true,
               catalog: "JPW" %>
       <% end %>
       <% if gci_categories.any? %>
@@ -86,6 +91,7 @@
               available: report.category_availability[:detail_category_ids],
               explicit: params.key?(:detail_category_ids),
               inline: true,
+              compact: true,
               catalog: "GCI" %>
       <% end %>
       <% if visible_tags.any? %>
@@ -96,7 +102,8 @@
               selected: selected_filters[:include_tag_ids],
               available: report.category_availability[:tag_ids],
               explicit: params.key?(:include_tag_ids),
-              inline: true %>
+              inline: true,
+              compact: true %>
         <%= render "myfin/transaction_explorers/slicer",
               label: t("myfin.transaction_explorer.filters.exclude_tags"),
               key: :exclude_tag_ids,
@@ -104,7 +111,8 @@
               selected: selected_filters[:exclude_tag_ids],
               available: report.category_availability[:tag_ids],
               explicit: params.key?(:exclude_tag_ids),
-              inline: true %>
+              inline: true,
+              compact: true %>
       <% end %>
     </div>
   </details>

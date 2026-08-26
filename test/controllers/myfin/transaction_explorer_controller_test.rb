@@ -210,14 +210,19 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "[data-testid='transaction-explorer-primary-filters']", count: 1 do
       assert_select "fieldset[data-filter-compact='true']", count: 4
+      assert_select "[data-filter-controls='true']", count: 4
     end
     assert_select "fieldset[data-category-catalog='JPW']", count: 1 do
+      assert_select "[data-filter-compact='true']", count: 1
+      assert_select "[data-filter-controls='true']", count: 1
       assert_select "input[name='detail_category_ids[]']", minimum: 1
       assert_select "label", text: /Restaurants/, minimum: 1
       assert_select "label", text: /Business Software/, count: 0
     end
     assert_select "fieldset[data-category-catalog='WDG']", count: 0
     assert_select "fieldset[data-category-catalog='GCI']", count: 1 do
+      assert_select "[data-filter-compact='true']", count: 1
+      assert_select "[data-filter-controls='true']", count: 1
       assert_select "label", text: /Business Software/, minimum: 1
       assert_select "label", text: /Restaurants/, count: 0
     end
