@@ -117,7 +117,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
         assert_select slicer, "button[aria-label='Use single selection']", count: 1
       end
     end
-    assert_select "[data-testid='transaction-explorer-shared-set'][data-ledger-count='1'][data-rollup-count='1']"
+    assert_select "[data-testid='transaction-explorer-shared-set']", count: 0
+    assert_select "#transaction-explorer-metrics", count: 0
     assert_select "[data-controller='transaction-explorer-tabulator']", count: 1
     assert_select "[data-action='transaction-explorer-tabulator#toggleLayout']", text: "Layout", count: 1
     assert_select "[data-action='transaction-explorer-tabulator#fitColumns']", text: /Fit columns/i, count: 1
@@ -127,7 +128,6 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-testid='compact-navigation-rail']", count: 1 do
       assert_select "[data-action='app-layout#openMobileSidebar']", count: 1
     end
-    assert_select "section", text: /Transactions\s+1\s+Expenses\s+\$120\.00\s+Income\s+\$0\.00\s+Transfer net\s+\$0\.00/
     assert_equal "Groceries", tabulator_row(personal_entry).fetch("detail_category")
     assert_nil tabulator_row(gci_entry)
     assert_select "a[href='#{myfin_transaction_explorer_path}']", text: /Explorer/
