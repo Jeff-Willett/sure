@@ -3,7 +3,7 @@ module Myfin
     MAX_VISIBLE_ROWS = 250
 
     def show
-      @report = self.class.report_for(user: Current.user, params: params)
+      @report = self.class.report_for(user: Current.user, params: params, profile: current_myfin_profile)
       @visible_rows = @report.rows.first(MAX_VISIBLE_ROWS)
       @breadcrumbs = [
         [ t("breadcrumbs.home"), root_path ],
@@ -11,9 +11,9 @@ module Myfin
       ]
     end
 
-    def self.report_for(user:, params:)
+    def self.report_for(user:, params:, profile: nil)
       filters = Myfin::TransactionExplorer::Filters.from_params(filter_params(params))
-      Myfin::TransactionExplorer::Report.call(user: user, filters: filters)
+      Myfin::TransactionExplorer::Report.call(user: user, filters: filters, profile: profile)
     end
 
     def self.filter_params(params)
@@ -24,7 +24,11 @@ module Myfin
         months: [],
         types: [],
         wdg_categories: [],
-        jpw_categories: []
+        jpw_categories: [],
+        detail_category_ids: [],
+        wdg_rollup_ids: [],
+        include_tag_ids: [],
+        exclude_tag_ids: []
       )
     end
   end

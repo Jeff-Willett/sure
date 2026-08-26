@@ -7,6 +7,10 @@ class MyfinTransactionExplorerFiltersTest < ActiveSupport::TestCase
       years: [ "2025", "2026" ],
       months: [ "8" ],
       types: [ "Expense" ],
+      detail_category_ids: [ "detail-1" ],
+      wdg_rollup_ids: [ "rollup-1" ],
+      include_tag_ids: [ "tag-1" ],
+      exclude_tag_ids: [ "tag-2" ],
       search: "  rent  "
     )
 
@@ -14,6 +18,10 @@ class MyfinTransactionExplorerFiltersTest < ActiveSupport::TestCase
     assert_equal [ 2025, 2026 ], filters.values_for(:years)
     assert_equal [ 8 ], filters.values_for(:months)
     assert_equal [ "Expense" ], filters.values_for(:types)
+    assert_equal [ "detail-1" ], filters.values_for(:detail_category_ids)
+    assert_equal [ "rollup-1" ], filters.values_for(:wdg_rollup_ids)
+    assert_equal [ "tag-1" ], filters.values_for(:include_tag_ids)
+    assert_equal [ "tag-2" ], filters.values_for(:exclude_tag_ids)
     assert_equal "rent", filters.search
   end
 

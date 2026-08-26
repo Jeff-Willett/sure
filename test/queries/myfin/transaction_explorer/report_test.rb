@@ -6,7 +6,77 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     @family = @user.family
     Myfin::BootstrapFamily.call(family: @family)
     @personal = @family.myfin_entities.find_by!(name: "JPW Personal")
+    @donna = @family.myfin_entities.find_by!(name: "Donna")
     @gci = @family.myfin_entities.find_by!(name: "Green Capital Investing")
+    @jpw_scheme = @family.myfin_category_schemes.find_by!(name: "JPW")
+    @dis_scheme = @family.myfin_category_schemes.find_by!(name: "DIS")
+    @wdg_scheme = @family.myfin_category_schemes.find_by!(name: "WDG")
+    @everything_profile = @family.myfin_reporting_profiles.find_by!(name: "Everything")
+    @wdg_profile = @family.myfin_reporting_profiles.find_by!(name: "WDG Report")
+  end
+
+  test "keeps JPW and Donna Shopping separate in Everything" do
+    jpw_shopping = @jpw_scheme.scheme_categories.create!(name: "Entity-aware Shopping")
+    dis_shopping = @dis_scheme.scheme_categories.create!(name: "Entity-aware Shopping")
+    jpw_entry = create_entity_entry(entity: @personal, scheme: @jpw_scheme, category: jpw_shopping, amount: 90)
+    donna_entry = create_entity_entry(entity: @donna, scheme: @dis_scheme, category: dis_shopping, amount: 50)
+
+    report = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @everything_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params({})
+    )
+
+    entity_rows = report.rows.select { |row| [ jpw_entry.id, donna_entry.id ].include?(row.entry_id) }
+    assert_equal [ dis_shopping.id, jpw_shopping.id ].sort, entity_rows.map(&:detail_category_id).sort
+    assert_equal %w[DIS JPW], entity_rows.map(&:detail_scheme_name).sort
+    assert_equal [ "Entity-aware Shopping", "Entity-aware Shopping" ], entity_rows.map(&:detail_category).sort
+  end
+
+  test "WDG Report includes JPW only and derives its grouping" do
+    restaurants = @jpw_scheme.scheme_categories.create!(name: "Entity-aware Restaurants")
+    wdg_shopping = @wdg_scheme.scheme_categories.create!(name: "Entity-aware WDG Shopping")
+    dis_restaurants = @dis_scheme.scheme_categories.create!(name: "Entity-aware Restaurants")
+    Myfin::CategoryRollupMapping.create!(source_category: restaurants, target_category: wdg_shopping)
+    personal_entry = create_entity_entry(entity: @personal, scheme: @jpw_scheme, category: restaurants, amount: 90)
+    donna_entry = create_entity_entry(entity: @donna, scheme: @dis_scheme, category: dis_restaurants, amount: 50)
+
+    report = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @wdg_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params({})
+    )
+
+    assert_includes report.rows.map(&:entry_id), personal_entry.id
+    assert_not_includes report.rows.map(&:entry_id), donna_entry.id
+    row = report.rows.find { |candidate| candidate.entry_id == personal_entry.id }
+    assert_equal "Entity-aware WDG Shopping", row.wdg_rollup
+    assert_equal wdg_shopping.id, row.wdg_rollup_id
+    assert_equal "wdg", report.rollup_mode
+  end
+
+  test "filters entity categories and WDG rollups by durable ID" do
+    restaurants = @jpw_scheme.scheme_categories.create!(name: "ID-filter Restaurants")
+    shopping = @wdg_scheme.scheme_categories.create!(name: "ID-filter Shopping")
+    Myfin::CategoryRollupMapping.create!(source_category: restaurants, target_category: shopping)
+    matching = create_entity_entry(entity: @personal, scheme: @jpw_scheme, category: restaurants, amount: 90)
+    create_entity_entry(
+      entity: @personal,
+      scheme: @jpw_scheme,
+      category: @jpw_scheme.scheme_categories.create!(name: "ID-filter Other"),
+      amount: 50
+    )
+
+    report = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @wdg_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params(
+        detail_category_ids: [ restaurants.id ],
+        wdg_rollup_ids: [ shopping.id ]
+      )
+    )
+
+    assert_equal [ matching.id ], report.rows.map(&:entry_id)
   end
 
   test "loads entries once and preserves selected allocation amounts" do
@@ -127,7 +197,17 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
       types: [ "Expense" ],
       wdg_categories: [ "GCI Office Expense", "Shopping" ],
       jpw_categories: [ "GCI Business Software", "Groceries" ]
-    }, report.selected_filters)
+    }, report.selected_filters.slice(
+      :entity_ids,
+      :years,
+      :months,
+      :types,
+      :wdg_categories,
+      :jpw_categories
+    ))
+    assert_equal report.filter_options.detail_categories.map { |category| category.first.to_s },
+      report.selected_filters[:detail_category_ids]
+    assert_empty report.selected_filters[:wdg_rollup_ids]
   end
 
   test "category availability respects every filter except its own category group" do
@@ -159,8 +239,8 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
 
     report = Myfin::TransactionExplorer::Report.call(user: @user, filters: filters)
 
-    assert_equal Set[ "Auto & Transport (RV)", "Other Living Expenses" ], report.category_availability[:wdg_categories]
-    assert_equal Set[ "Camping1", "Groceries" ], report.category_availability[:jpw_categories]
+    assert_equal Set["Auto & Transport (RV)", "Other Living Expenses"], report.category_availability[:wdg_categories]
+    assert_equal Set["Camping1", "Groceries"], report.category_availability[:jpw_categories]
   end
 
   test "returns metrics and a hierarchical rollup from the final rows" do
@@ -344,6 +424,23 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
   end
 
   private
+    def create_entity_entry(entity:, scheme:, category:, amount:)
+      entry = create_entry(
+        entity_amounts: { entity => amount },
+        date: Date.new(2026, 8, 26),
+        name: "Entity-aware sample #{category.name}",
+        amount: amount
+      )
+      Myfin::TransactionClassification.create!(
+        sure_transaction: entry.transaction,
+        category_scheme: scheme,
+        scheme_category: category,
+        classification_source: "manual",
+        confidence: 1
+      )
+      entry
+    end
+
     def create_entry(entity_amounts:, date:, name:, amount:, account: accounts(:depository), kind: "standard", wdg: nil, jpw: nil)
       entry = account.entries.create!(
         entryable: Transaction.new(kind: kind),

@@ -1,6 +1,8 @@
 module Myfin
   module TransactionExplorer
     class Report
+      class ProfileFamilyMismatch < StandardError; end
+
       Row = Data.define(
         :entry_id,
         :transaction_id,
@@ -14,6 +16,16 @@ module Myfin
         :wdg_category_id,
         :jpw,
         :jpw_category_id,
+        :entity_id,
+        :entity_name,
+        :detail_scheme_name,
+        :detail_category_id,
+        :detail_category,
+        :wdg_rollup_id,
+        :wdg_rollup,
+        :tag_ids,
+        :tag_names,
+        :classification_status,
         :account_name,
         :editable
       )
@@ -21,21 +33,42 @@ module Myfin
       RollupCategory = Data.define(:jpw, :amount, :count)
       RollupGroup = Data.define(:wdg, :amount, :categories)
       RollupType = Data.define(:type, :amount, :groups)
-      FilterOptions = Data.define(:entities, :years, :months, :types, :wdg_categories, :jpw_categories)
-      Result = Data.define(:rows, :metrics, :rollup, :filter_options, :category_options, :selected_filters, :category_availability)
+      FilterOptions = Data.define(
+        :entities,
+        :years,
+        :months,
+        :types,
+        :wdg_categories,
+        :jpw_categories,
+        :detail_categories,
+        :wdg_rollups
+      )
+      Result = Data.define(
+        :rows,
+        :metrics,
+        :rollup,
+        :filter_options,
+        :category_options,
+        :selected_filters,
+        :category_availability,
+        :rollup_mode
+      )
 
       TYPE_ORDER = { "Expense" => 0, "Income" => 1, "Transfer" => 2 }.freeze
 
-      def self.call(user:, filters:)
-        new(user:, filters:).call
+      def self.call(user:, filters:, profile: nil)
+        new(user:, filters:, profile:).call
       end
 
-      def initialize(user:, filters:)
+      def initialize(user:, filters:, profile:)
         @user = user
         @filters = filters
+        @profile = profile
       end
 
       def call
+        raise ProfileFamilyMismatch if profile && profile.family_id != user.family_id
+
         available_rows = build_rows(all_entity_ids)
         rows = apply_filters(build_rows(selected_entity_ids))
         filter_options = build_filter_options(available_rows)
@@ -47,12 +80,13 @@ module Myfin
           filter_options: filter_options,
           category_options: build_category_options,
           selected_filters: build_selected_filters(filter_options),
-          category_availability: build_category_availability(build_rows(selected_entity_ids))
+          category_availability: build_category_availability(build_rows(selected_entity_ids)),
+          rollup_mode: rollup_mode
         )
       end
 
       private
-        attr_reader :user, :filters
+        attr_reader :user, :filters, :profile
 
         def source_entries
           @source_entries ||= Entry
@@ -61,7 +95,16 @@ module Myfin
             .joins(:myfin_allocations)
             .where(myfin_entry_allocations: { entity_id: all_entity_ids })
             .distinct
-            .includes(account: :account_shares, myfin_allocations: :entity, entryable: { myfin_classifications: [ :category_scheme, :scheme_category ] })
+            .includes(
+              account: :account_shares,
+              myfin_allocations: { entity: :category_schemes },
+              entryable: {
+                myfin_classifications: [
+                  :category_scheme,
+                  { scheme_category: :wdg_rollup_category }
+                ]
+              }
+            )
             .to_a
         end
 
@@ -94,6 +137,7 @@ module Myfin
             allocated_amount = selected_allocations.sum(BigDecimal("0"), &:amount)
             entry = source_row.fetch(:entry)
             transaction = entry.transaction
+            context = Myfin::EntityCategoryContext.call(entry: entry)
 
             Row.new(
               entry_id: entry.id,
@@ -108,6 +152,16 @@ module Myfin
               wdg_category_id: source_row.fetch(:wdg_category_id),
               jpw: source_row.fetch(:jpw),
               jpw_category_id: source_row.fetch(:jpw_category_id),
+              entity_id: context.entity&.id,
+              entity_name: context.entity&.name,
+              detail_scheme_name: context.scheme&.name,
+              detail_category_id: context.detail_category&.id,
+              detail_category: context.detail_category&.name || "Uncategorized",
+              wdg_rollup_id: context.wdg_rollup&.id,
+              wdg_rollup: context.wdg_rollup&.name,
+              tag_ids: [],
+              tag_names: [],
+              classification_status: context.status,
               account_name: entry.account.name,
               editable: editable?(entry)
             )
@@ -115,13 +169,23 @@ module Myfin
         end
 
         def selected_entity_ids
-          return all_entity_ids unless filters.explicit?(:entity_ids)
+          available = profile_entity_ids
+          return available unless filters.explicit?(:entity_ids)
 
-          user.family.myfin_entities.active.where(id: filters.values_for(:entity_ids)).pluck(:id).to_set
+          requested = user.family.myfin_entities.active.where(id: filters.values_for(:entity_ids)).pluck(:id).to_set
+          requested & available
         end
 
         def all_entity_ids
           @all_entity_ids ||= user.family.myfin_entities.active.pluck(:id).to_set
+        end
+
+        def profile_entity_ids
+          @profile_entity_ids ||= if profile
+            profile.entities.active.pluck(:id).to_set
+          else
+            all_entity_ids
+          end
         end
 
         def apply_filters(rows)
@@ -135,6 +199,8 @@ module Myfin
             .select { |row| excluded_key == :types || keep_filter?(:types, row.type) }
             .select { |row| excluded_key == :wdg_categories || keep_filter?(:wdg_categories, row.wdg) }
             .select { |row| excluded_key == :jpw_categories || keep_filter?(:jpw_categories, row.jpw) }
+            .select { |row| excluded_key == :detail_category_ids || keep_filter?(:detail_category_ids, row.detail_category_id) }
+            .select { |row| excluded_key == :wdg_rollup_ids || keep_filter?(:wdg_rollup_ids, row.wdg_rollup_id) }
             .select { |row| filters.search.blank? || row_search_text(row).include?(filters.search) }
             .sort_by { |row| [ -row.date.jd, row.entry_id ] }
         end
@@ -189,7 +255,13 @@ module Myfin
             months: rows.map { |row| row.date.month }.uniq.sort,
             types: rows.map(&:type).uniq.sort_by { |type| TYPE_ORDER.fetch(type, 99) },
             wdg_categories: rows.map(&:wdg).uniq.sort,
-            jpw_categories: rows.map(&:jpw).uniq.sort
+            jpw_categories: rows.map(&:jpw).uniq.sort,
+            detail_categories: rows.filter_map do |row|
+              [ row.detail_category_id, row.detail_scheme_name, row.detail_category ] if row.detail_category_id
+            end.uniq.sort_by { |id, scheme, name| [ scheme, name, id ] },
+            wdg_rollups: rows.filter_map do |row|
+              [ row.wdg_rollup_id, row.wdg_rollup ] if row.wdg_rollup_id
+            end.uniq.sort_by { |id, name| [ name, id ] }
           )
         end
 
@@ -213,14 +285,24 @@ module Myfin
             months: filters.selected_values(:months, available: filter_options.months),
             types: filters.selected_values(:types, available: filter_options.types),
             wdg_categories: filters.selected_values(:wdg_categories, available: filter_options.wdg_categories),
-            jpw_categories: filters.selected_values(:jpw_categories, available: filter_options.jpw_categories)
+            jpw_categories: filters.selected_values(:jpw_categories, available: filter_options.jpw_categories),
+            detail_category_ids: filters.selected_values(
+              :detail_category_ids,
+              available: filter_options.detail_categories.map(&:first)
+            ),
+            wdg_rollup_ids: filters.selected_values(
+              :wdg_rollup_ids,
+              available: filter_options.wdg_rollups.map(&:first)
+            )
           }
         end
 
         def build_category_availability(rows)
           {
             wdg_categories: apply_filters_except(rows, :wdg_categories).map(&:wdg).uniq.to_set,
-            jpw_categories: apply_filters_except(rows, :jpw_categories).map(&:jpw).uniq.to_set
+            jpw_categories: apply_filters_except(rows, :jpw_categories).map(&:jpw).uniq.to_set,
+            detail_category_ids: apply_filters_except(rows, :detail_category_ids).map(&:detail_category_id).compact.to_set,
+            wdg_rollup_ids: apply_filters_except(rows, :wdg_rollup_ids).map(&:wdg_rollup_id).compact.to_set
           }
         end
 
@@ -235,9 +317,21 @@ module Myfin
         end
 
         def row_search_text(row)
-          [ row.description, row.account_name, row.wdg, row.jpw, *row.entity_names ]
+          [
+            row.description,
+            row.account_name,
+            row.wdg,
+            row.jpw,
+            row.detail_category,
+            row.wdg_rollup,
+            *row.entity_names
+          ]
             .join(" ")
             .downcase
+        end
+
+        def rollup_mode
+          profile&.preferred_category_scheme&.name == "WDG" ? "wdg" : "entity"
         end
     end
   end
