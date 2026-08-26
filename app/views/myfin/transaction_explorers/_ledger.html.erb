@@ -88,7 +88,7 @@
       <table class="w-full min-w-[1380px] text-sm" data-transaction-explorer-grid-target="table">
         <colgroup data-transaction-explorer-columns-target="colgroup">
           <% columns.each do |column| %>
-            <col data-column="<%= column.key %>" style="width: <%= column.default_width %>px">
+            <col data-column="<%= column.key == "entity" ? "entity-fixed" : column.key %>" style="width: <%= column.default_width %>px">
           <% end %>
         </colgroup>
         <thead class="sticky top-0 z-10 bg-container text-left text-xs text-secondary shadow-border-xs">
@@ -101,15 +101,17 @@
                 data-column="<%= column.key %>"
                 style="<%= "left: #{sticky_offset}" if sticky %>">
                 <span><%= t("myfin.transaction_explorer.columns.#{column.key}") %></span>
-                <button
-                  type="button"
-                  class="absolute inset-y-0 right-0 w-2 cursor-col-resize border-0 bg-transparent p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-info"
-                  aria-label="<%= t("myfin.transaction_explorer.resize_column", column: t("myfin.transaction_explorer.columns.#{column.key}")) %>"
-                  aria-orientation="vertical"
-                  tabindex="0"
-                  data-column="<%= column.key %>"
-                  data-transaction-explorer-columns-target="handle"
-                  data-action="pointerdown->transaction-explorer-columns#start keydown->transaction-explorer-columns#keydown dblclick->transaction-explorer-columns#resetColumn"></button>
+                <% unless column.key == "entity" %>
+                  <button
+                    type="button"
+                    class="absolute inset-y-0 right-0 w-2 cursor-col-resize border-0 bg-transparent p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-info"
+                    aria-label="<%= t("myfin.transaction_explorer.resize_column", column: t("myfin.transaction_explorer.columns.#{column.key}")) %>"
+                    aria-orientation="vertical"
+                    tabindex="0"
+                    data-column="<%= column.key %>"
+                    data-transaction-explorer-columns-target="handle"
+                    data-action="pointerdown->transaction-explorer-columns#start keydown->transaction-explorer-columns#keydown dblclick->transaction-explorer-columns#resetColumn"></button>
+                <% end %>
               </th>
             <% end %>
           </tr>

@@ -165,13 +165,11 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     groceries_category = @family.myfin_category_schemes.find_by!(name: "JPW").scheme_categories.find_by!(name: "Groceries")
     assert_select "div[data-controller~='transaction-explorer-grid']", count: 1 do
       assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 8
-      assert_select "colgroup col[data-column='entity'][style*='width: 84px']", count: 1
+      assert_select "colgroup col[data-column='entity-fixed'][style*='width: 84px']", count: 1
       assert_select "th[data-column='catalog']", count: 0
-      assert_select "thead th", count: 8 do |headers|
-        headers.each do |header|
-          assert_select header, "[data-transaction-explorer-columns-target='handle'][tabindex='0']", count: 1
-        end
-      end
+      assert_select "thead th", count: 8
+      assert_select "thead th[data-column='entity'] [data-transaction-explorer-columns-target='handle']", count: 0
+      assert_select "thead th:not([data-column='entity']) [data-transaction-explorer-columns-target='handle'][tabindex='0']", count: 7
       assert_select "tr[data-entry-id='#{entry.id}'] td[data-column='wdg-rollup']", text: "Shopping", count: 1
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form", count: 0
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'][data-transaction-explorer-grid-target='cell'] form", count: 1
