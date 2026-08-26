@@ -1,5 +1,6 @@
-<%# locals: (rows:, total_count:, category_options: nil) %>
+<%# locals: (rows:, total_count:, category_options: nil, tag_options: nil) %>
 <% category_options ||= @report&.category_options || {} %>
+<% tag_options ||= @report&.tag_options || [] %>
 
 <section
   class="min-w-0 bg-container">
@@ -136,6 +137,21 @@
                   <%= row.detail_category %>
                 </td>
               <% end %>
+              <td class="px-3 py-2 text-primary" data-column="tags">
+                <%= form_with scope: :transaction,
+                      url: tags_transaction_path(row.entry_id),
+                      method: :patch do |form| %>
+                  <%= render DS::TagSelect.new(
+                    form: form,
+                    tags: tag_options,
+                    selected_ids: row.tag_ids,
+                    disabled: !row.editable,
+                    auto_submit: true,
+                    update_url: tags_transaction_path(row.entry_id),
+                    menu_placement: :auto
+                  ) %>
+                <% end %>
+              </td>
               <td class="min-w-56 px-3 py-2 text-primary">
                 <%= row.description %>
                 <span class="mt-0.5 block text-xs text-secondary"><%= row.type %></span>

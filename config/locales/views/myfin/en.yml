@@ -11,6 +11,8 @@ en:
         types: "Type"
         wdg: "WDG category"
         jpw: "JPW category"
+        include_tags: "Include tags"
+        exclude_tags: "Exclude tags"
         search: "Search transactions"
         more: "WDG and JPW categories"
         reset: "Reset filters"
@@ -56,12 +58,14 @@ en:
         entity: "Entity"
         wdg_rollup: "WDG rollup"
         detail_category: "Detail category"
+        tags: "Tags"
         wdg: "WDG"
         jpw: "JPW"
         description: "Description"
         account: "Account"
         amount: "Amount"
       not_applicable: "Not applicable"
+      excluding_tags: "Excluding: %{tags}"
     transaction_dimensions:
       title: "MyFIN dimensions"
     entry_allocations:

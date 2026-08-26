@@ -5,6 +5,7 @@ module Myfin::TransactionExplorersHelper
     TransactionExplorerColumn.new(key: "entity", default_width: 260, min_width: 180),
     TransactionExplorerColumn.new(key: "wdg_rollup", default_width: 180, min_width: 140),
     TransactionExplorerColumn.new(key: "detail_category", default_width: 180, min_width: 140),
+    TransactionExplorerColumn.new(key: "tags", default_width: 240, min_width: 180),
     TransactionExplorerColumn.new(key: "description", default_width: 360, min_width: 220),
     TransactionExplorerColumn.new(key: "account", default_width: 220, min_width: 160),
     TransactionExplorerColumn.new(key: "amount", default_width: 150, min_width: 120)

@@ -19,6 +19,17 @@
     <span class="text-subdued">Ledger <%= @report.rows.size %></span>
   </div>
 
+  <% if @report.excluded_tag_names.any? %>
+    <div
+      class="border-b border-secondary bg-warning/10 px-4 py-2 text-xs text-primary"
+      data-testid="transaction-explorer-active-exclusions">
+      <%= t(
+        "myfin.transaction_explorer.excluding_tags",
+        tags: @report.excluded_tag_names.to_sentence
+      ) %>
+    </div>
+  <% end %>
+
   <div id="transaction-explorer-metrics">
     <%= render "metrics", metrics: @report.metrics %>
   </div>
@@ -45,7 +56,11 @@
       <span class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-secondary transition-colors group-hover:bg-info group-focus-visible:bg-info motion-reduce:transition-none"></span>
     </div>
     <div id="transaction-explorer-ledger">
-      <%= render "ledger", rows: @visible_rows, total_count: @report.rows.size, category_options: @report.category_options %>
+      <%= render "ledger",
+            rows: @visible_rows,
+            total_count: @report.rows.size,
+            category_options: @report.category_options,
+            tag_options: @report.tag_options %>
     </div>
   </div>
 

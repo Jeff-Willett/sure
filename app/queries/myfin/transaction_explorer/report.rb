@@ -41,7 +41,8 @@ module Myfin
         :wdg_categories,
         :jpw_categories,
         :detail_categories,
-        :wdg_rollups
+        :wdg_rollups,
+        :tags
       )
       Result = Data.define(
         :rows,
@@ -51,7 +52,9 @@ module Myfin
         :category_options,
         :selected_filters,
         :category_availability,
-        :rollup_mode
+        :rollup_mode,
+        :tag_options,
+        :excluded_tag_names
       )
 
       TYPE_ORDER = { "Expense" => 0, "Income" => 1, "Transfer" => 2 }.freeze
@@ -81,7 +84,9 @@ module Myfin
           category_options: build_category_options,
           selected_filters: build_selected_filters(filter_options),
           category_availability: build_category_availability(build_rows(selected_entity_ids)),
-          rollup_mode: rollup_mode
+          rollup_mode: rollup_mode,
+          tag_options: user.family.tags.alphabetically.to_a,
+          excluded_tag_names: user.family.tags.where(id: exclude_tag_ids).alphabetically.pluck(:name)
         )
       end
 
@@ -98,12 +103,15 @@ module Myfin
             .includes(
               account: :account_shares,
               myfin_allocations: { entity: :category_schemes },
-              entryable: {
-                myfin_classifications: [
-                  :category_scheme,
-                  { scheme_category: :wdg_rollup_category }
-                ]
-              }
+              entryable: [
+                :tags,
+                {
+                  myfin_classifications: [
+                    :category_scheme,
+                    { scheme_category: :wdg_rollup_category }
+                  ]
+                }
+              ]
             )
             .to_a
         end
@@ -163,8 +171,8 @@ module Myfin
               detail_category: context.detail_category&.name || "Uncategorized",
               wdg_rollup_id: context.wdg_rollup&.id,
               wdg_rollup: context.wdg_rollup&.name,
-              tag_ids: [],
-              tag_names: [],
+              tag_ids: transaction.tags.map(&:id).sort,
+              tag_names: transaction.tags.map(&:name).sort,
               classification_status: context.status,
               account_name: entry.account.name,
               editable: editable?(entry)
@@ -205,6 +213,8 @@ module Myfin
             .select { |row| excluded_key == :jpw_categories || keep_filter?(:jpw_categories, row.jpw) }
             .select { |row| excluded_key == :detail_category_ids || keep_filter?(:detail_category_ids, row.detail_category_id) }
             .select { |row| excluded_key == :wdg_rollup_ids || keep_filter?(:wdg_rollup_ids, row.wdg_rollup_id) }
+            .select { |row| excluded_key == :include_tag_ids || include_tag_match?(row) }
+            .reject { |row| excluded_key != :exclude_tag_ids && exclude_tag_match?(row) }
             .select { |row| filters.search.blank? || row_search_text(row).include?(filters.search) }
             .sort_by { |row| [ -row.date.jd, row.entry_id ] }
         end
@@ -213,6 +223,29 @@ module Myfin
           return true unless filters.explicit?(key)
 
           filters.values_for(key).include?(value)
+        end
+
+        def include_tag_match?(row)
+          return true unless filters.explicit?(:include_tag_ids)
+          return false if include_tag_ids.empty?
+
+          (row.tag_ids.to_set & include_tag_ids).any?
+        end
+
+        def exclude_tag_match?(row)
+          exclude_tag_ids.any? && (row.tag_ids.to_set & exclude_tag_ids).any?
+        end
+
+        def include_tag_ids
+          @include_tag_ids ||= valid_tag_ids(:include_tag_ids)
+        end
+
+        def exclude_tag_ids
+          @exclude_tag_ids ||= valid_tag_ids(:exclude_tag_ids)
+        end
+
+        def valid_tag_ids(key)
+          user.family.tags.where(id: filters.values_for(key)).pluck(:id).to_set
         end
 
         def build_metrics(rows)
@@ -252,6 +285,7 @@ module Myfin
 
         def build_filter_options(rows)
           entity_ids = rows.flat_map(&:entity_ids).uniq
+          tag_ids = rows.flat_map(&:tag_ids).uniq
 
           FilterOptions.new(
             entities: user.family.myfin_entities.active.where(id: entity_ids).order(:name).pluck(:id, :name),
@@ -265,7 +299,8 @@ module Myfin
             end.uniq.sort_by { |id, scheme, name| [ scheme, name, id ] },
             wdg_rollups: rows.filter_map do |row|
               [ row.wdg_rollup_id, row.wdg_rollup ] if row.wdg_rollup_id
-            end.uniq.sort_by { |id, name| [ name, id ] }
+            end.uniq.sort_by { |id, name| [ name, id ] },
+            tags: user.family.tags.where(id: tag_ids).alphabetically.pluck(:id, :name)
           )
         end
 
@@ -297,6 +332,14 @@ module Myfin
             wdg_rollup_ids: filters.selected_values(
               :wdg_rollup_ids,
               available: filter_options.wdg_rollups.map(&:first)
+            ),
+            include_tag_ids: filters.selected_values(
+              :include_tag_ids,
+              available: filter_options.tags.map(&:first)
+            ),
+            exclude_tag_ids: filters.selected_values(
+              :exclude_tag_ids,
+              available: filter_options.tags.map(&:first)
             )
           }
         end
@@ -306,7 +349,8 @@ module Myfin
             wdg_categories: apply_filters_except(rows, :wdg_categories).map(&:wdg).uniq.to_set,
             jpw_categories: apply_filters_except(rows, :jpw_categories).map(&:jpw).uniq.to_set,
             detail_category_ids: apply_filters_except(rows, :detail_category_ids).map(&:detail_category_id).compact.to_set,
-            wdg_rollup_ids: apply_filters_except(rows, :wdg_rollup_ids).map(&:wdg_rollup_id).compact.to_set
+            wdg_rollup_ids: apply_filters_except(rows, :wdg_rollup_ids).map(&:wdg_rollup_id).compact.to_set,
+            tag_ids: apply_filters_except(rows, :include_tag_ids).flat_map(&:tag_ids).to_set
           }
         end
 

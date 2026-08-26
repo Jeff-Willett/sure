@@ -41,7 +41,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "main", text: /Working frame/, count: 0
     assert_select "input[name='entity_ids[]'][value='#{@personal.id}']", checked: "checked"
     assert_select "input[name='entity_ids[]'][value='#{@gci.id}']", count: 1
-    assert_select "fieldset[data-controller='transaction-explorer-slicer']", count: 6 do |slicers|
+    assert_select "fieldset[data-controller='transaction-explorer-slicer']", count: 8 do |slicers|
       slicers.each do |slicer|
         assert_select slicer, "input[type='hidden'][value='__none__']", count: 1
         assert_select slicer, "button[aria-label='Select all']", count: 1
@@ -94,8 +94,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     groceries_category = @family.myfin_category_schemes.find_by!(name: "JPW").scheme_categories.find_by!(name: "Groceries")
     assert_select "div[data-controller~='transaction-explorer-grid']", count: 1 do
-      assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 7
-      assert_select "thead th", count: 7 do |headers|
+      assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 8
+      assert_select "thead th", count: 8 do |headers|
         headers.each do |header|
           assert_select header, "[data-transaction-explorer-columns-target='handle'][tabindex='0']", count: 1
         end
@@ -103,6 +103,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
       assert_select "tr[data-entry-id='#{entry.id}'] td[data-column='wdg-rollup']", text: "Shopping", count: 1
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form", count: 0
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'][data-transaction-explorer-grid-target='cell'] form", count: 1
+      assert_select "tr[data-entry-id='#{entry.id}'] [data-controller='tag-select'][data-tag-select-update-url-value='#{tags_transaction_path(entry)}']", count: 1
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form[action*='search=grid'] input[name='scheme_id']", count: 1
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form select[name='category_id'] option[value='']", text: "Uncategorized", count: 1
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form select[name='category_id'] option[value=''][selected]", count: 0
@@ -166,6 +167,28 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-entry-id='#{editable_entry.id}'] td[data-scheme] form", count: 1
     assert_select "tr[data-entry-id='#{read_only_entry.id}'] td[data-scheme] form", count: 0
     assert_select "tr[data-entry-id='#{read_only_entry.id}'] td[data-scheme] [data-editor]", count: 0
+  end
+
+  test "renders tag filters and names active exclusions" do
+    setup_tag = @family.tags.create!(name: "Apartment Setup 2026", color: "#e99537")
+    entry = create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 8),
+      name: "Tagged grid expense",
+      amount: 45,
+      wdg: "Shopping",
+      jpw: "Groceries"
+    )
+    entry.transaction.tags << setup_tag
+
+    get myfin_transaction_explorer_path, params: { exclude_tag_ids: [ setup_tag.id ] }
+
+    assert_response :success
+    assert_select "input[name='exclude_tag_ids[]'][value='#{setup_tag.id}'][checked]", count: 1
+    assert_select "input[name='include_tag_ids[]'][value='#{setup_tag.id}']", count: 1
+    assert_select "[data-testid='transaction-explorer-active-exclusions']", text: /Apartment Setup 2026/, count: 1
+    assert_select "tr[data-entry-id='#{entry.id}']", count: 0
   end
 
   test "renders scoped history for editable rows and recent changes in the drawer" do

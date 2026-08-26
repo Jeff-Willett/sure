@@ -79,6 +79,53 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     assert_equal [ matching.id ], report.rows.map(&:entry_id)
   end
 
+  test "includes and excludes an event tag from the same monthly set" do
+    category = @jpw_scheme.scheme_categories.create!(name: "Tag-filter Shopping")
+    setup_tag = @family.tags.create!(name: "Apartment Setup 2026", color: "#e99537")
+    ordinary = create_entity_entry(entity: @personal, scheme: @jpw_scheme, category: category, amount: 40)
+    event = create_entity_entry(entity: @personal, scheme: @jpw_scheme, category: category, amount: 90)
+    event.transaction.tags << setup_tag
+
+    included = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @everything_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params(include_tag_ids: [ setup_tag.id ])
+    )
+    excluded = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @everything_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params(exclude_tag_ids: [ setup_tag.id ])
+    )
+
+    assert_equal [ event.id ], included.rows.map(&:entry_id)
+    assert_includes excluded.rows.map(&:entry_id), ordinary.id
+    assert_not_includes excluded.rows.map(&:entry_id), event.id
+    assert_equal included.rows.sum(&:amount), included.rollup.sum(&:amount)
+    assert_equal excluded.rows.sum(&:amount), excluded.rollup.sum(&:amount)
+    assert_equal [ setup_tag.id ], included.rows.first.tag_ids
+    assert_equal [ setup_tag.name ], included.rows.first.tag_names
+  end
+
+  test "fails closed for a cross-family include tag and ignores it for exclusion" do
+    category = @jpw_scheme.scheme_categories.create!(name: "Cross-family tag Shopping")
+    entry = create_entity_entry(entity: @personal, scheme: @jpw_scheme, category: category, amount: 40)
+    other_tag = families(:empty).tags.create!(name: "Other family tag", color: "#e99537")
+
+    included = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @everything_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params(include_tag_ids: [ other_tag.id ])
+    )
+    excluded = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @everything_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params(exclude_tag_ids: [ other_tag.id ])
+    )
+
+    assert_empty included.rows
+    assert_includes excluded.rows.map(&:entry_id), entry.id
+  end
+
   test "loads entries once and preserves selected allocation amounts" do
     personal_entry = create_entry(
       entity_amounts: { @personal => 40 },

@@ -44,7 +44,7 @@
     </div>
   </div>
 
-  <details <%= "open" if params.key?(:wdg_categories) || params.key?(:jpw_categories) %> class="group border-t border-secondary bg-container-inset">
+  <details <%= "open" if %i[wdg_categories jpw_categories include_tag_ids exclude_tag_ids].any? { |key| params.key?(key) } %> class="group border-t border-secondary bg-container-inset">
     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2 text-xs font-medium text-secondary transition-colors hover:bg-container-inset-hover hover:text-primary focus-ring motion-reduce:transition-none">
       <span class="inline-flex items-center gap-2">
         <%= icon("sliders-horizontal", size: "sm") %>
@@ -68,6 +68,22 @@
             selected: selected_filters[:jpw_categories],
             available: report.category_availability[:jpw_categories],
             explicit: params.key?(:jpw_categories),
+            inline: true %>
+      <%= render "myfin/transaction_explorers/slicer",
+            label: t("myfin.transaction_explorer.filters.include_tags"),
+            key: :include_tag_ids,
+            options: filter_options.tags,
+            selected: selected_filters[:include_tag_ids],
+            available: report.category_availability[:tag_ids],
+            explicit: params.key?(:include_tag_ids),
+            inline: true %>
+      <%= render "myfin/transaction_explorers/slicer",
+            label: t("myfin.transaction_explorer.filters.exclude_tags"),
+            key: :exclude_tag_ids,
+            options: filter_options.tags,
+            selected: selected_filters[:exclude_tag_ids],
+            available: report.category_availability[:tag_ids],
+            explicit: params.key?(:exclude_tag_ids),
             inline: true %>
     </div>
   </details>
