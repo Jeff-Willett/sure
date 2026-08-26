@@ -9,6 +9,7 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     @donna = @family.myfin_entities.find_by!(name: "Donna")
     @gci = @family.myfin_entities.find_by!(name: "Green Capital Investing")
     @jpw_scheme = @family.myfin_category_schemes.find_by!(name: "JPW")
+    @gci_scheme = @family.myfin_category_schemes.find_by!(name: "GCI")
     @dis_scheme = @family.myfin_category_schemes.find_by!(name: "DIS")
     @wdg_scheme = @family.myfin_category_schemes.find_by!(name: "WDG")
     @everything_profile = @family.myfin_reporting_profiles.find_by!(name: "Everything")
@@ -104,6 +105,28 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     assert_equal excluded.rows.sum(&:amount), excluded.rollup.sum(&:amount)
     assert_equal [ setup_tag.id ], included.rows.first.tag_ids
     assert_equal [ setup_tag.name ], included.rows.first.tag_names
+  end
+
+  test "hides legacy category tags while keeping event tags" do
+    category = @jpw_scheme.scheme_categories.create!(name: "Clean-tag Shopping")
+    event_tag = @family.tags.create!(name: "Apartment Setup 2026", color: "#e99537")
+    legacy_tag = @family.tags.create!(name: "JPW: Shopping", color: "#e99537")
+    entry = create_entity_entry(entity: @personal, scheme: @jpw_scheme, category: category, amount: 90)
+    entry.transaction.tags << [ event_tag, legacy_tag ]
+
+    report = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @everything_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params(include_tag_ids: [ legacy_tag.id ])
+    )
+
+    assert_includes report.tag_options.map(&:id), event_tag.id
+    assert_not_includes report.tag_options.map(&:id), legacy_tag.id
+    assert report.tag_options.none? { |tag| tag.name.match?(/\A(?:JPW|GCI|DIS|WDG):\s/) }
+    assert_includes report.filter_options.tags, [ event_tag.id, event_tag.name ]
+    assert_not_includes report.filter_options.tags, [ legacy_tag.id, legacy_tag.name ]
+    assert_equal [ event_tag.id ], report.rows.find { |row| row.entry_id == entry.id }.tag_ids
+    assert_equal [ event_tag.name ], report.rows.find { |row| row.entry_id == entry.id }.tag_names
   end
 
   test "fails closed for a cross-family include tag and ignores it for exclusion" do

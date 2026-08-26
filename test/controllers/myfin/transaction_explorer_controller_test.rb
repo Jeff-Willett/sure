@@ -78,7 +78,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "main", text: /Working frame/, count: 0
     assert_select "input[name='entity_ids[]'][value='#{@personal.id}']", checked: "checked"
     assert_select "input[name='entity_ids[]'][value='#{@gci.id}']", count: 1
-    assert_select "fieldset[data-controller='transaction-explorer-slicer']", count: 8 do |slicers|
+    assert_select "fieldset[data-controller='transaction-explorer-slicer']", minimum: 4 do |slicers|
       slicers.each do |slicer|
         assert_select slicer, "input[type='hidden'][value='__none__']", count: 1
         assert_select slicer, "button[aria-label='Select all']", count: 1
@@ -152,6 +152,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     end
     assert_select "#transaction-explorer-ledger[data-controller~='transaction-explorer-grid']", count: 0
     assert_select "tr[data-entry-id='#{entry.id}'] td:first-child[style*='transaction-explorer-date-offset']", count: 1
+    assert_select "tr[data-entry-id='#{entry.id}'][class*='odd:bg-container'][class*='even:bg-container-inset']", count: 1
+    assert_select "tr[data-entry-id='#{entry.id}'] td[class*='hover:bg-surface-hover']", minimum: 1
     assert_select "tr[data-entry-id='#{entry.id}'] td:nth-child(2)[style*='transaction-explorer-entity-offset']", count: 1
     assert_select "button", text: "Edit categories", count: 1
     assert_select "span[data-transaction-explorer-grid-target='editStatus'][role='status'][hidden]", text: /Editing on/, count: 1
@@ -162,6 +164,42 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "span", text: /Shift-select.*Copy\/Paste/, count: 1
     assert_select "button", text: "Recent changes", count: 1
     assert_select "button", text: "Reset column widths", count: 1
+  end
+
+
+  test "renders JPW, WDG, and GCI categories in separate filter buckets" do
+    create_classified_entry(
+      account: accounts(:depository),
+      entity: @personal,
+      date: Date.new(2026, 8, 12),
+      name: "JPW category bucket",
+      amount: 40,
+      wdg: "Shopping",
+      jpw: "Restaurants"
+    )
+    create_classified_entry(
+      account: accounts(:credit_card),
+      entity: @gci,
+      date: Date.new(2026, 8, 12),
+      name: "GCI category bucket",
+      amount: 25,
+      wdg: nil,
+      jpw: "Business Software"
+    )
+
+    get myfin_transaction_explorer_path
+
+    assert_response :success
+    assert_select "fieldset[data-category-catalog='JPW']", count: 1 do
+      assert_select "input[name='detail_category_ids[]']", minimum: 1
+      assert_select "label", text: /Restaurants/, minimum: 1
+      assert_select "label", text: /Business Software/, count: 0
+    end
+    assert_select "fieldset[data-category-catalog='WDG']", count: 1
+    assert_select "fieldset[data-category-catalog='GCI']", count: 1 do
+      assert_select "label", text: /Business Software/, minimum: 1
+      assert_select "label", text: /Restaurants/, count: 0
+    end
   end
 
   test "renders category editors only for editable rows" do

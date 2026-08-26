@@ -2,6 +2,8 @@
 
 <% filter_options = report.filter_options %>
 <% selected_filters = report.selected_filters %>
+<% jpw_categories = filter_options.detail_categories.select { |_id, scheme, _name| scheme == "JPW" } %>
+<% gci_categories = filter_options.detail_categories.select { |_id, scheme, _name| scheme == "GCI" } %>
 
 <%= form_with url: myfin_transaction_explorer_path,
       method: :get,
@@ -52,17 +54,18 @@
       </span>
       <%= icon("chevron-down", size: "sm", class: "transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none") %>
     </summary>
-    <div class="grid border-t border-secondary @4xl:grid-cols-2 @4xl:divide-x @4xl:divide-secondary">
-      <%= render "myfin/transaction_explorers/slicer",
-            label: t("myfin.transaction_explorer.filters.detail_category"),
-            key: :detail_category_ids,
-            options: filter_options.detail_categories.map { |id, scheme, name|
-              [ id, report.profile_name == "Everything" ? "#{scheme} · #{name}" : name ]
-            },
-            selected: selected_filters[:detail_category_ids],
-            available: report.category_availability[:detail_category_ids],
-            explicit: params.key?(:detail_category_ids),
-            inline: true %>
+    <div class="grid border-t border-secondary @4xl:grid-cols-3 @4xl:divide-x @4xl:divide-secondary">
+      <% if jpw_categories.any? %>
+        <%= render "myfin/transaction_explorers/slicer",
+              label: "JPW categories",
+              key: :detail_category_ids,
+              options: jpw_categories.map { |id, _scheme, name| [ id, name ] },
+              selected: selected_filters[:detail_category_ids],
+              available: report.category_availability[:detail_category_ids],
+              explicit: params.key?(:detail_category_ids),
+              inline: true,
+              catalog: "JPW" %>
+      <% end %>
       <% if filter_options.wdg_rollups.any? %>
         <%= render "myfin/transaction_explorers/slicer",
               label: t("myfin.transaction_explorer.filters.wdg_rollup"),
@@ -71,24 +74,38 @@
               selected: selected_filters[:wdg_rollup_ids],
               available: report.category_availability[:wdg_rollup_ids],
               explicit: params.key?(:wdg_rollup_ids),
+              inline: true,
+              catalog: "WDG" %>
+      <% end %>
+      <% if gci_categories.any? %>
+        <%= render "myfin/transaction_explorers/slicer",
+              label: "GCI categories",
+              key: :detail_category_ids,
+              options: gci_categories.map { |id, _scheme, name| [ id, name ] },
+              selected: selected_filters[:detail_category_ids],
+              available: report.category_availability[:detail_category_ids],
+              explicit: params.key?(:detail_category_ids),
+              inline: true,
+              catalog: "GCI" %>
+      <% end %>
+      <% if filter_options.tags.any? %>
+        <%= render "myfin/transaction_explorers/slicer",
+              label: t("myfin.transaction_explorer.filters.include_tags"),
+              key: :include_tag_ids,
+              options: filter_options.tags,
+              selected: selected_filters[:include_tag_ids],
+              available: report.category_availability[:tag_ids],
+              explicit: params.key?(:include_tag_ids),
+              inline: true %>
+        <%= render "myfin/transaction_explorers/slicer",
+              label: t("myfin.transaction_explorer.filters.exclude_tags"),
+              key: :exclude_tag_ids,
+              options: filter_options.tags,
+              selected: selected_filters[:exclude_tag_ids],
+              available: report.category_availability[:tag_ids],
+              explicit: params.key?(:exclude_tag_ids),
               inline: true %>
       <% end %>
-      <%= render "myfin/transaction_explorers/slicer",
-            label: t("myfin.transaction_explorer.filters.include_tags"),
-            key: :include_tag_ids,
-            options: filter_options.tags,
-            selected: selected_filters[:include_tag_ids],
-            available: report.category_availability[:tag_ids],
-            explicit: params.key?(:include_tag_ids),
-            inline: true %>
-      <%= render "myfin/transaction_explorers/slicer",
-            label: t("myfin.transaction_explorer.filters.exclude_tags"),
-            key: :exclude_tag_ids,
-            options: filter_options.tags,
-            selected: selected_filters[:exclude_tag_ids],
-            available: report.category_availability[:tag_ids],
-            explicit: params.key?(:exclude_tag_ids),
-            inline: true %>
     </div>
   </details>
 <% end %>

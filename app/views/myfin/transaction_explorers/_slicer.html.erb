@@ -1,10 +1,11 @@
-<%# locals: (label:, key:, options:, selected:, inline: false, available: nil, explicit: false) %>
+<%# locals: (label:, key:, options:, selected:, inline: false, available: nil, explicit: false, catalog: nil) %>
 
 <% available ||= options.map { |value, _text| value.to_s }.to_set %>
 
 <fieldset
   class="<%= class_names("min-w-0 bg-container px-3 py-2", "flex flex-wrap items-center gap-x-2 gap-y-1.5" => inline) %>"
   data-controller="transaction-explorer-slicer"
+  <%= "data-category-catalog=#{catalog}" if catalog %>
   data-transaction-explorer-slicer-key-value="<%= key %>"
   data-transaction-explorer-slicer-single-label-value="<%= t("myfin.transaction_explorer.filters.single_selection") %>"
   data-transaction-explorer-slicer-multiple-label-value="<%= t("myfin.transaction_explorer.filters.multiple_selection") %>">

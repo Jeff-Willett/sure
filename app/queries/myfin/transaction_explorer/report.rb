@@ -60,6 +60,7 @@ module Myfin
       )
 
       TYPE_ORDER = { "Expense" => 0, "Income" => 1, "Transfer" => 2 }.freeze
+      LEGACY_CATEGORY_TAG = /\A(?:JPW|GCI|DIS|WDG):\s/.freeze
 
       def self.call(user:, filters:, profile: nil)
         new(user:, filters:, profile:).call
@@ -87,7 +88,7 @@ module Myfin
           selected_filters: build_selected_filters(filter_options),
           category_availability: build_category_availability(build_rows(selected_entity_ids)),
           rollup_mode: rollup_mode,
-          tag_options: user.family.tags.alphabetically.to_a,
+          tag_options: visible_tags(user.family.tags.alphabetically.to_a),
           excluded_tag_names: user.family.tags.where(id: exclude_tag_ids).alphabetically.pluck(:name),
           profile_name: profile&.name,
           profile_scheme_name: profile&.preferred_category_scheme&.name
@@ -149,6 +150,7 @@ module Myfin
             allocated_amount = selected_allocations.sum(BigDecimal("0"), &:amount)
             entry = source_row.fetch(:entry)
             transaction = entry.transaction
+            transaction_tags = visible_tags(transaction.tags)
             context = Myfin::EntityCategoryContext.call(entry: entry)
             wdg_label = context.wdg_rollup&.name || source_row.fetch(:wdg)
             wdg_id = context.wdg_rollup&.id || source_row.fetch(:wdg_category_id)
@@ -175,8 +177,8 @@ module Myfin
               detail_category: context.detail_category&.name || "Uncategorized",
               wdg_rollup_id: context.wdg_rollup&.id,
               wdg_rollup: context.wdg_rollup&.name,
-              tag_ids: transaction.tags.map(&:id).sort,
-              tag_names: transaction.tags.map(&:name).sort,
+              tag_ids: transaction_tags.map(&:id).sort,
+              tag_names: transaction_tags.map(&:name).sort,
               classification_status: context.status,
               account_name: entry.account.name,
               editable: editable?(entry)
@@ -239,7 +241,8 @@ module Myfin
         def include_tag_match?(row)
           return true unless filters.explicit?(:include_tag_ids)
           return true if filters.values_for(:include_tag_ids).empty?
-          return false if include_tag_ids.empty?
+          return false if family_tag_ids(:include_tag_ids).empty?
+          return true if include_tag_ids.empty?
 
           (row.tag_ids.to_set & include_tag_ids).any?
         end
@@ -257,7 +260,16 @@ module Myfin
         end
 
         def valid_tag_ids(key)
-          user.family.tags.where(id: filters.values_for(key)).pluck(:id).to_set
+          visible_tags(user.family.tags.where(id: family_tag_ids(key))).map(&:id).to_set
+        end
+
+        def family_tag_ids(key)
+          @family_tag_ids ||= {}
+          @family_tag_ids[key] ||= user.family.tags.where(id: filters.values_for(key)).pluck(:id).to_set
+        end
+
+        def visible_tags(tags)
+          tags.reject { |tag| tag.name.match?(LEGACY_CATEGORY_TAG) }
         end
 
         def build_metrics(rows)
