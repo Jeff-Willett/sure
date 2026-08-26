@@ -126,6 +126,24 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     assert_includes excluded.rows.map(&:entry_id), entry.id
   end
 
+  test "an empty optional WDG filter preserves non-JPW entities" do
+    dis_shopping = @dis_scheme.scheme_categories.create!(name: "Optional WDG Donna Shopping")
+    donna_entry = create_entity_entry(
+      entity: @donna,
+      scheme: @dis_scheme,
+      category: dis_shopping,
+      amount: 50
+    )
+
+    report = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @everything_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params(wdg_rollup_ids: [ "__none__" ])
+    )
+
+    assert_includes report.rows.map(&:entry_id), donna_entry.id
+  end
+
   test "loads entries once and preserves selected allocation amounts" do
     personal_entry = create_entry(
       entity_amounts: { @personal => 40 },

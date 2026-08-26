@@ -5,9 +5,18 @@ class MyfinClassificationChangesControllerTest < ActionDispatch::IntegrationTest
     ensure_tailwind_build
     @user = users(:family_admin)
     @entry = entries(:transaction)
-    @scheme = Myfin::CategoryScheme.create!(family: @user.family, name: "JPW")
+    Myfin::BootstrapFamily.call(family: @user.family)
+    @entity = @user.family.myfin_entities.find_by!(name: "JPW Personal")
+    @scheme = @user.family.myfin_category_schemes.find_by!(name: "JPW")
     @previous_category = Myfin::SchemeCategory.create!(category_scheme: @scheme, name: "Dining")
     @new_category = Myfin::SchemeCategory.create!(category_scheme: @scheme, name: "Coffee")
+    Myfin::EntryAllocation.replace_for!(@entry, [
+      Myfin::EntryAllocation.new(
+        entity: @entity,
+        amount: @entry.amount,
+        allocation_source: "manual"
+      )
+    ])
     Myfin::TransactionClassification.create!(
       sure_transaction: @entry.transaction,
       category_scheme: @scheme,

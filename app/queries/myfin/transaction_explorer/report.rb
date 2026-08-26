@@ -216,7 +216,7 @@ module Myfin
             .select { |row| excluded_key == :wdg_categories || keep_filter?(:wdg_categories, row.wdg) }
             .select { |row| excluded_key == :jpw_categories || keep_filter?(:jpw_categories, row.jpw) }
             .select { |row| excluded_key == :detail_category_ids || keep_filter?(:detail_category_ids, row.detail_category_id) }
-            .select { |row| excluded_key == :wdg_rollup_ids || keep_filter?(:wdg_rollup_ids, row.wdg_rollup_id) }
+            .select { |row| excluded_key == :wdg_rollup_ids || optional_filter_match?(:wdg_rollup_ids, row.wdg_rollup_id) }
             .select { |row| excluded_key == :include_tag_ids || include_tag_match?(row) }
             .reject { |row| excluded_key != :exclude_tag_ids && exclude_tag_match?(row) }
             .select { |row| filters.search.blank? || row_search_text(row).include?(filters.search) }
@@ -225,6 +225,13 @@ module Myfin
 
         def keep_filter?(key, value)
           return true unless filters.explicit?(key)
+
+          filters.values_for(key).include?(value)
+        end
+
+        def optional_filter_match?(key, value)
+          return true unless filters.explicit?(key)
+          return true if filters.values_for(key).empty?
 
           filters.values_for(key).include?(value)
         end
@@ -361,16 +368,17 @@ module Myfin
               :detail_category_ids,
               available: filter_options.detail_categories.map(&:first)
             ),
-            wdg_rollup_ids: filters.selected_values(
-              :wdg_rollup_ids,
-              available: filter_options.wdg_rollups.map(&:first)
-            ),
+            wdg_rollup_ids: selected_optional_values(:wdg_rollup_ids),
             include_tag_ids: selected_tag_values(:include_tag_ids),
             exclude_tag_ids: selected_tag_values(:exclude_tag_ids)
           }
         end
 
         def selected_tag_values(key)
+          selected_optional_values(key)
+        end
+
+        def selected_optional_values(key)
           return [] unless filters.explicit?(key)
 
           filters.values_for(key).map(&:to_s)

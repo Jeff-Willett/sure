@@ -14,9 +14,14 @@ class MyfinEntityCategoriesPreviewTest < ApplicationSystemTestCase
 
     visit myfin_transaction_explorer_path
 
+    click_button "JPW Personal"
+    click_button "Everything"
+
     assert_text "Sample Online Market"
     assert_text "Sample Home Store"
     assert_text "Sample Cafe"
+    assert_text "Sample Donna Store"
+    assert_text "Sample Business Software"
     assert_text "Shopping"
 
     find("summary", text: "Categories and tags").click
@@ -31,6 +36,8 @@ class MyfinEntityCategoriesPreviewTest < ApplicationSystemTestCase
     assert_no_text "Sample Online Market"
     assert_no_text "Sample Home Store"
     assert_text "Sample Cafe"
+    assert_text "Sample Donna Store"
+    assert_text "Sample Business Software"
     assert_text "Shopping"
     assert_text "Excluding: Apartment Setup 2026"
   end
