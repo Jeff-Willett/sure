@@ -231,6 +231,7 @@ module Myfin
 
         def include_tag_match?(row)
           return true unless filters.explicit?(:include_tag_ids)
+          return true if filters.values_for(:include_tag_ids).empty?
           return false if include_tag_ids.empty?
 
           (row.tag_ids.to_set & include_tag_ids).any?
@@ -364,15 +365,15 @@ module Myfin
               :wdg_rollup_ids,
               available: filter_options.wdg_rollups.map(&:first)
             ),
-            include_tag_ids: filters.selected_values(
-              :include_tag_ids,
-              available: filter_options.tags.map(&:first)
-            ),
-            exclude_tag_ids: filters.selected_values(
-              :exclude_tag_ids,
-              available: filter_options.tags.map(&:first)
-            )
+            include_tag_ids: selected_tag_values(:include_tag_ids),
+            exclude_tag_ids: selected_tag_values(:exclude_tag_ids)
           }
+        end
+
+        def selected_tag_values(key)
+          return [] unless filters.explicit?(key)
+
+          filters.values_for(key).map(&:to_s)
         end
 
         def build_category_availability(rows)
