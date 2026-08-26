@@ -155,7 +155,8 @@
                     disabled: !row.editable,
                     auto_submit: true,
                     update_url: tags_transaction_path(row.entry_id),
-                    menu_placement: :auto
+                    menu_placement: :auto,
+                    spreadsheet_input: true
                   ) %>
                 <% end %>
               </td>

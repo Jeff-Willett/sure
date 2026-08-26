@@ -174,6 +174,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form", count: 0
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'][data-transaction-explorer-grid-target='cell'] form", count: 1
       assert_select "tr[data-entry-id='#{entry.id}'] [data-controller='tag-select'][data-tag-select-update-url-value='#{tags_transaction_path(entry)}']", count: 1
+      assert_select "tr[data-entry-id='#{entry.id}'] input[data-tag-select-target='input'][placeholder='Add tags…']", count: 1
+      assert_select "tr[data-entry-id='#{entry.id}'] button[data-tag-select-target='button']", count: 0
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form[action*='search=grid'] input[name='scheme_id']", count: 1
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form select[name='category_id'] option[value='']", text: "Uncategorized", count: 1
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form select[name='category_id'] option[value=''][selected]", count: 0
