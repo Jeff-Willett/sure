@@ -138,6 +138,10 @@ module Myfin
             entry = source_row.fetch(:entry)
             transaction = entry.transaction
             context = Myfin::EntityCategoryContext.call(entry: entry)
+            wdg_label = context.wdg_rollup&.name || source_row.fetch(:wdg)
+            wdg_id = context.wdg_rollup&.id || source_row.fetch(:wdg_category_id)
+            detail_label = context.detail_category&.name || source_row.fetch(:jpw)
+            detail_id = context.detail_category&.id || source_row.fetch(:jpw_category_id)
 
             Row.new(
               entry_id: entry.id,
@@ -148,10 +152,10 @@ module Myfin
               type: transaction_type(transaction, allocated_amount),
               entity_ids: selected_allocations.map(&:entity_id).uniq,
               entity_names: selected_allocations.map { |allocation| allocation.entity.name }.uniq.sort,
-              wdg: source_row.fetch(:wdg),
-              wdg_category_id: source_row.fetch(:wdg_category_id),
-              jpw: source_row.fetch(:jpw),
-              jpw_category_id: source_row.fetch(:jpw_category_id),
+              wdg: wdg_label,
+              wdg_category_id: wdg_id,
+              jpw: detail_label,
+              jpw_category_id: detail_id,
               entity_id: context.entity&.id,
               entity_name: context.entity&.name,
               detail_scheme_name: context.scheme&.name,
@@ -267,7 +271,7 @@ module Myfin
 
         def build_category_options
           user.family.myfin_category_schemes
-            .where(name: %w[WDG JPW])
+            .where(name: %w[JPW DIS GCI])
             .includes(:scheme_categories)
             .to_h do |scheme|
               categories = scheme.scheme_categories

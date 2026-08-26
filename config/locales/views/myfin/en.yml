@@ -54,11 +54,14 @@ en:
       columns:
         date: "Date"
         entity: "Entity"
+        wdg_rollup: "WDG rollup"
+        detail_category: "Detail category"
         wdg: "WDG"
         jpw: "JPW"
         description: "Description"
         account: "Account"
         amount: "Amount"
+      not_applicable: "Not applicable"
     transaction_dimensions:
       title: "MyFIN dimensions"
     entry_allocations:

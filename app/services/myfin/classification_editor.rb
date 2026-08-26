@@ -35,6 +35,7 @@ module Myfin
       TransactionClassification.transaction do
         sure_transaction.lock!
         validate_scheme!
+        validate_entity_scheme!
         validate_category!(target_category)
         validate_category!(expected_category)
 
@@ -59,7 +60,6 @@ module Myfin
         )
 
         classification = replace_classification!(classification, target)
-        mirror_wdg_to_sure!(target) if wdg_scheme?
 
         Result.new(classification: classification, change: change)
       end
@@ -78,6 +78,12 @@ module Myfin
 
       def validate_scheme!
         raise InvalidCategory unless scheme&.family_id == family.id
+      end
+
+      def validate_entity_scheme!
+        context = Myfin::EntityCategoryContext.call(entry: entry)
+        raise InvalidCategory if scheme.name == "WDG"
+        raise InvalidCategory unless context.entity && context.scheme&.id == scheme.id
       end
 
       def validate_category!(category)
@@ -121,18 +127,6 @@ module Myfin
           reviewed_by: actor
         )
         classification
-      end
-
-      def wdg_scheme?
-        scheme.name == "WDG"
-      end
-
-      def mirror_wdg_to_sure!(category)
-        native_category = if category
-          family.categories.find_or_create_by!(name: category.name)
-        end
-
-        sure_transaction.update!(category: native_category)
       end
   end
 end

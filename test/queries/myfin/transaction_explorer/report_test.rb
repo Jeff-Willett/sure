@@ -347,8 +347,8 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     jpw_scheme = @family.myfin_category_schemes.find_by!(name: "JPW")
     wdg_category = wdg_scheme.scheme_categories.create!(name: "Report metadata WDG category")
     jpw_category = jpw_scheme.scheme_categories.create!(name: "Report metadata JPW category")
-    available_only_in_editor = wdg_scheme.scheme_categories.create!(name: "Explorer-only WDG category")
-    wdg_scheme.scheme_categories.create!(name: "Inactive Explorer category", active: false)
+    available_only_in_editor = jpw_scheme.scheme_categories.create!(name: "Explorer-only JPW category")
+    jpw_scheme.scheme_categories.create!(name: "Inactive Explorer category", active: false)
     entry = create_entry(
       entity_amounts: { @personal => 120 },
       date: Date.new(2026, 8, 5),
@@ -368,8 +368,8 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     assert_equal wdg_category.id, row.wdg_category_id
     assert_equal jpw_category.id, row.jpw_category_id
     assert row.editable
-    assert_includes report.category_options.fetch("WDG"), [ available_only_in_editor.id, available_only_in_editor.name ]
-    assert_not_includes report.category_options.fetch("WDG"), [ wdg_scheme.scheme_categories.find_by!(name: "Inactive Explorer category").id, "Inactive Explorer category" ]
+    assert_includes report.category_options.fetch("JPW"), [ available_only_in_editor.id, available_only_in_editor.name ]
+    assert_not_includes report.category_options.fetch("JPW"), [ jpw_scheme.scheme_categories.find_by!(name: "Inactive Explorer category").id, "Inactive Explorer category" ]
   end
 
   test "marks rows from read-only accounts as not editable" do

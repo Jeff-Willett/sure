@@ -3,8 +3,8 @@ module Myfin::TransactionExplorersHelper
   TRANSACTION_EXPLORER_COLUMNS = [
     TransactionExplorerColumn.new(key: "date", default_width: 140, min_width: 96),
     TransactionExplorerColumn.new(key: "entity", default_width: 260, min_width: 180),
-    TransactionExplorerColumn.new(key: "wdg", default_width: 180, min_width: 140),
-    TransactionExplorerColumn.new(key: "jpw", default_width: 180, min_width: 140),
+    TransactionExplorerColumn.new(key: "wdg_rollup", default_width: 180, min_width: 140),
+    TransactionExplorerColumn.new(key: "detail_category", default_width: 180, min_width: 140),
     TransactionExplorerColumn.new(key: "description", default_width: 360, min_width: 220),
     TransactionExplorerColumn.new(key: "account", default_width: 220, min_width: 160),
     TransactionExplorerColumn.new(key: "amount", default_width: 150, min_width: 120)
@@ -16,7 +16,7 @@ module Myfin::TransactionExplorersHelper
 
   def transaction_explorer_scheme_ids
     @transaction_explorer_scheme_ids ||= Current.family.myfin_category_schemes
-      .where(name: %w[WDG JPW])
+      .where(name: %w[JPW DIS GCI])
       .pluck(:name, :id)
       .to_h
   end

@@ -92,7 +92,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path, params: { search: "grid" }
 
     assert_response :success
-    shopping_category = @family.myfin_category_schemes.find_by!(name: "WDG").scheme_categories.find_by!(name: "Shopping")
+    groceries_category = @family.myfin_category_schemes.find_by!(name: "JPW").scheme_categories.find_by!(name: "Groceries")
     assert_select "div[data-controller~='transaction-explorer-grid']", count: 1 do
       assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 7
       assert_select "thead th", count: 7 do |headers|
@@ -100,12 +100,13 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
           assert_select header, "[data-transaction-explorer-columns-target='handle'][tabindex='0']", count: 1
         end
       end
-      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'][data-transaction-explorer-grid-target='cell'] form", count: 1
+      assert_select "tr[data-entry-id='#{entry.id}'] td[data-column='wdg-rollup']", text: "Shopping", count: 1
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form", count: 0
       assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'][data-transaction-explorer-grid-target='cell'] form", count: 1
-      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form[action*='search=grid'] input[name='scheme_id']", count: 1
-      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form select[name='category_id'] option[value='']", text: "Uncategorized", count: 1
-      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form select[name='category_id'] option[value=''][selected]", count: 0
-      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='WDG'] form select[name='category_id'] option[value='#{shopping_category.id}'][selected]", text: "Shopping", count: 1
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form[action*='search=grid'] input[name='scheme_id']", count: 1
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form select[name='category_id'] option[value='']", text: "Uncategorized", count: 1
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form select[name='category_id'] option[value=''][selected]", count: 0
+      assert_select "td[data-entry-id='#{entry.id}'][data-scheme='JPW'] form select[name='category_id'] option[value='#{groceries_category.id}'][selected]", text: "Groceries", count: 1
       assert_select "th[data-column='date'][style*='transaction-explorer-date-offset']", count: 1
       assert_select "th[data-column='entity'][style*='transaction-explorer-entity-offset']", count: 1
     end
@@ -162,7 +163,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path
 
     assert_response :success
-    assert_select "tr[data-entry-id='#{editable_entry.id}'] td[data-scheme] form", count: 2
+    assert_select "tr[data-entry-id='#{editable_entry.id}'] td[data-scheme] form", count: 1
     assert_select "tr[data-entry-id='#{read_only_entry.id}'] td[data-scheme] form", count: 0
     assert_select "tr[data-entry-id='#{read_only_entry.id}'] td[data-scheme] [data-editor]", count: 0
   end
@@ -212,7 +213,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "renders the committed change ID in the edit result for undo" do
-    scheme = @family.myfin_category_schemes.find_by!(name: "WDG")
+    scheme = @family.myfin_category_schemes.find_by!(name: "JPW")
     old_category = scheme.scheme_categories.create!(name: "Undo original category")
     new_category = scheme.scheme_categories.create!(name: "Undo updated category")
     entry = create_classified_entry(
@@ -221,8 +222,8 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
       date: Date.new(2026, 8, 12),
       name: "Undo result expense",
       amount: 55,
-      wdg: old_category.name,
-      jpw: "Groceries"
+      wdg: "Shopping",
+      jpw: old_category.name
     )
 
     patch myfin_entry_transaction_explorer_classification_path(entry), params: {
@@ -234,7 +235,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     change = Myfin::ClassificationChange.order(:created_at, :id).last
 
     assert_response :success
-    assert_select "turbo-stream[action='update'][target='transaction-explorer-edit-result'] template [data-entry-id='#{entry.id}'][data-scheme='WDG'][data-change-id='#{change.id}'][data-scheme-id='#{scheme.id}'][data-previous-category-id='#{old_category.id}'][data-new-category-id='#{new_category.id}'][data-revert-url='#{revert_myfin_classification_change_path(change)}']", count: 1
+    assert_select "turbo-stream[action='update'][target='transaction-explorer-edit-result'] template [data-entry-id='#{entry.id}'][data-scheme='JPW'][data-change-id='#{change.id}'][data-scheme-id='#{scheme.id}'][data-previous-category-id='#{old_category.id}'][data-new-category-id='#{new_category.id}'][data-revert-url='#{revert_myfin_classification_change_path(change)}']", count: 1
   end
 
   private
@@ -253,10 +254,19 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
           allocation_source: "manual"
         )
       ])
+      detail_scheme = entity.category_schemes.find_by!(is_default: true)
+      detail_category = detail_scheme.scheme_categories.find_or_create_by!(name: jpw)
       Myfin::Imports::ClassificationWriter.call(
         sure_transaction: entry.transaction,
-        classifications: { "WDG" => wdg, "JPW" => jpw }
+        classifications: { detail_scheme.name => detail_category.name }
       )
+      if entity == @personal
+        wdg_category = @family.myfin_category_schemes.find_by!(name: "WDG")
+          .scheme_categories.find_or_create_by!(name: wdg)
+        Myfin::CategoryRollupMapping.find_or_create_by!(source_category: detail_category) do |mapping|
+          mapping.target_category = wdg_category
+        end
+      end
       entry
     end
 end

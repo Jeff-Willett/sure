@@ -1,21 +1,21 @@
-<%# locals: (row:, scheme:, category_options:) %>
-<% value_key = scheme.downcase %>
-<% category_id = row.public_send("#{value_key}_category_id") %>
-<% label = row.public_send(value_key) %>
+<%# locals: (row:, scheme:, category_id:, label:, category_options:) %>
 <% options = category_options.fetch(scheme, []) %>
 <% select_options = options.map { |category_id, category_name| [ category_name, category_id ] } %>
 <% scheme_id = transaction_explorer_scheme_ids.fetch(scheme) %>
 <% action_url = myfin_entry_transaction_explorer_classification_path(row.entry_id, request.query_parameters) %>
 
-<td
-  class="relative px-3 py-2 text-primary"
-  data-entry-id="<%= row.entry_id %>"
-  data-scheme="<%= scheme %>"
-  data-editable="<%= row.editable %>"
-  data-category-id="<%= category_id %>"
-  data-expected-category-id="<%= category_id %>"
-  <% if row.editable %>data-transaction-explorer-grid-target="cell"<% end %>
-  >
+<%= tag.td(
+  class: "relative px-3 py-2 text-primary",
+  data: {
+    column: "detail-category",
+    entry_id: row.entry_id,
+    scheme: scheme,
+    editable: row.editable,
+    category_id: category_id,
+    expected_category_id: category_id,
+    transaction_explorer_grid_target: ("cell" if row.editable)
+  }
+) do %>
   <span data-transaction-explorer-grid-label><%= label %></span>
   <% if row.editable %>
     <div hidden data-transaction-explorer-grid-target="editor" data-editor>
@@ -40,4 +40,4 @@
       <% end %>
     </div>
   <% end %>
-</td>
+<% end %>
