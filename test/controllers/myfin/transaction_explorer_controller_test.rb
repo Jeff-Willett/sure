@@ -162,7 +162,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "main[class*='overflow-hidden'][class*='min-h-0']", count: 1
-    assert_select "[data-controller='transaction-explorer-tabulator'][data-transaction-explorer-tabulator-persistence-id-value='myfin-transaction-explorer-v1']", count: 1 do
+    assert_select "[data-controller='transaction-explorer-tabulator'][data-transaction-explorer-tabulator-persistence-id-value='myfin-transaction-explorer-v2']", count: 1 do
       assert_select "[data-transaction-explorer-tabulator-target='grid']", count: 1
       assert_select "[data-transaction-explorer-tabulator-target='sort']", count: 1
       assert_select "button", text: "Layout", count: 1
