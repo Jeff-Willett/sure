@@ -4,7 +4,6 @@ module Myfin::TransactionExplorersHelper
       {
         id: row.entry_id,
         workflow_status: row.classification_status.to_s.humanize,
-        open_url: myfin_entry_classification_changes_path(row.entry_id),
         type: row.type,
         date: row.date.iso8601,
         entity: row.entity_names.join(", "),

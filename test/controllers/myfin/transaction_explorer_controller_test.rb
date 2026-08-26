@@ -162,14 +162,16 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "main[class*='overflow-hidden'][class*='min-h-0']", count: 1
-    assert_select "[data-controller='transaction-explorer-tabulator'][data-transaction-explorer-tabulator-persistence-id-value='myfin-transaction-explorer-v2']", count: 1 do
+    assert_select "[data-controller='transaction-explorer-tabulator'][data-transaction-explorer-tabulator-persistence-id-value='myfin-transaction-explorer-v3']", count: 1 do
       assert_select "[data-transaction-explorer-tabulator-target='grid']", count: 1
       assert_select "[data-transaction-explorer-tabulator-target='sort']", count: 1
       assert_select "button", text: "Layout", count: 1
+      assert_select "button[data-action='transaction-explorer-tabulator#toggleRollups'][aria-expanded='false']", text: "Rollups", count: 1
       assert_select "button", text: /Fit columns/i, count: 1
       assert_select "button", text: /Collapse all/i, count: 1
       assert_select "button", text: "Undo", count: 1
       assert_select "button", text: "Redo", count: 1
+      assert_select "aside[hidden][data-transaction-explorer-tabulator-target='rollupPane']", count: 1
     end
     row = tabulator_row(entry)
     assert_equal "Shopping", row.fetch("wdg_rollup")
@@ -399,7 +401,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path
 
     assert_response :success
-    assert_equal myfin_entry_classification_changes_path(entry), tabulator_row(entry).fetch("open_url")
+    assert_not tabulator_row(entry).key?("open_url")
     assert_not tabulator_row(read_only_entry).fetch("editable")
   end
 

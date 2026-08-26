@@ -8,6 +8,8 @@ export default class extends Controller {
     "data",
     "grid",
     "layoutMenu",
+    "rollupButton",
+    "rollupPane",
     "sort",
     "tagData",
   ];
@@ -59,15 +61,6 @@ export default class extends Controller {
   get columns() {
     return [
       { title: "Status", field: "workflow_status", frozen: true, width: 118 },
-      {
-        title: "Open",
-        field: "open_url",
-        frozen: true,
-        width: 62,
-        formatter: this.openFormatter,
-        headerSort: false,
-        clipboard: false,
-      },
       { title: "Type", field: "type", frozen: true, width: 90 },
       {
         title: "Date",
@@ -122,15 +115,6 @@ export default class extends Controller {
         formatter: this.amountFormatter,
       },
     ];
-  }
-
-  openFormatter(cell) {
-    const link = document.createElement("a");
-    link.href = cell.getValue();
-    link.textContent = "Open";
-    link.className = "text-link hover:underline";
-    link.dataset.turboFrame = "drawer";
-    return link;
   }
 
   amountFormatter(cell) {
@@ -263,6 +247,13 @@ export default class extends Controller {
 
   fitColumns() {
     this.table.setOptions({ layout: "fitColumns" });
+  }
+
+  toggleRollups() {
+    const opening = this.rollupPaneTarget.hidden;
+    this.rollupPaneTarget.hidden = !opening;
+    this.rollupButtonTarget.setAttribute("aria-expanded", String(opening));
+    requestAnimationFrame(() => this.table.redraw(true));
   }
 
   collapseAll() {

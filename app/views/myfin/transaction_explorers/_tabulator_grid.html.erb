@@ -1,9 +1,9 @@
-<%# locals: (rows:, total_count:, category_options:, tag_options:) %>
+<%# locals: (rows:, total_count:, category_options:, tag_options:, rollup:, rollup_mode:) %>
 
 <section
   class="flex min-h-0 flex-1 flex-col bg-container"
   data-controller="transaction-explorer-tabulator"
-  data-transaction-explorer-tabulator-persistence-id-value="myfin-transaction-explorer-v2"
+  data-transaction-explorer-tabulator-persistence-id-value="myfin-transaction-explorer-v3"
   data-transaction-explorer-tabulator-create-tag-url-value="<%= tags_path(format: :json) %>">
   <header class="flex min-h-11 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-secondary px-3 py-2">
     <div class="flex items-center gap-2">
@@ -30,6 +30,7 @@
         <div hidden class="absolute right-0 z-50 mt-1 min-w-52 rounded-md border border-secondary bg-container p-2 shadow-md" data-transaction-explorer-tabulator-target="layoutMenu"></div>
       </div>
 
+      <button type="button" class="h-8 rounded-md border border-secondary px-2.5 text-xs font-medium text-primary hover:bg-surface-hover" aria-expanded="false" data-transaction-explorer-tabulator-target="rollupButton" data-action="transaction-explorer-tabulator#toggleRollups">Rollups</button>
       <button type="button" class="h-8 rounded-md border border-secondary px-2.5 text-xs font-medium text-primary hover:bg-surface-hover" data-action="transaction-explorer-tabulator#fitColumns">Fit columns</button>
       <button type="button" class="h-8 rounded-md border border-secondary px-2.5 text-xs font-medium text-primary hover:bg-surface-hover" data-action="transaction-explorer-tabulator#collapseAll">Collapse all</button>
       <button type="button" class="h-8 rounded-md border border-secondary px-2.5 text-xs font-medium text-primary hover:bg-surface-hover" data-action="transaction-explorer-tabulator#undo">Undo</button>
@@ -37,7 +38,12 @@
     </div>
   </header>
 
-  <div class="min-h-0 flex-1" data-transaction-explorer-tabulator-target="grid"></div>
+  <div class="flex min-h-0 flex-1">
+    <aside hidden class="w-80 shrink-0 overflow-y-auto border-r border-secondary bg-container" data-transaction-explorer-tabulator-target="rollupPane">
+      <%= render "rollup", rollup: rollup, rollup_mode: rollup_mode %>
+    </aside>
+    <div class="min-w-0 min-h-0 flex-1" data-transaction-explorer-tabulator-target="grid"></div>
+  </div>
   <template data-transaction-explorer-tabulator-target="data"><%= raw json_escape(transaction_explorer_tabulator_rows(rows).to_json) %></template>
   <template data-transaction-explorer-tabulator-target="categoryData"><%= raw json_escape(category_options.to_json) %></template>
   <template data-transaction-explorer-tabulator-target="tagData"><%= raw json_escape(tag_options.map { |tag| { id: tag.id, name: tag.name } }.to_json) %></template>
