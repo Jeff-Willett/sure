@@ -134,7 +134,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[aria-label^='Reporting profile:']", count: 0
   end
 
-  test "keeps the category panel open after a category filter submission" do
+  test "keeps the category panel collapsed after a category filter submission" do
     category = @family.myfin_category_schemes.find_by!(name: "JPW")
       .scheme_categories.create!(name: "Panel category")
     get myfin_transaction_explorer_path, params: {
@@ -142,9 +142,10 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     }
 
     assert_response :success
-    assert_select "details[open]", count: 1 do
+    assert_select "details", count: 1 do
       assert_select "summary", text: /Categories and tags/
     end
+    assert_select "details[open]", count: 0
   end
 
   test "renders a full-height persistent Tabulator grid with desktop controls" do
@@ -184,7 +185,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
   end
 
 
-  test "renders JPW, WDG, and GCI categories in separate filter buckets" do
+  test "renders compact primary filters and entity-aligned category buckets" do
     create_classified_entry(
       account: accounts(:depository),
       entity: @personal,
@@ -207,16 +208,31 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path
 
     assert_response :success
+    assert_select "[data-testid='transaction-explorer-primary-filters']", count: 1 do
+      assert_select "fieldset[data-filter-compact='true']", count: 4
+    end
     assert_select "fieldset[data-category-catalog='JPW']", count: 1 do
       assert_select "input[name='detail_category_ids[]']", minimum: 1
       assert_select "label", text: /Restaurants/, minimum: 1
       assert_select "label", text: /Business Software/, count: 0
     end
-    assert_select "fieldset[data-category-catalog='WDG']", count: 1
+    assert_select "fieldset[data-category-catalog='WDG']", count: 0
     assert_select "fieldset[data-category-catalog='GCI']", count: 1 do
       assert_select "label", text: /Business Software/, minimum: 1
       assert_select "label", text: /Restaurants/, count: 0
     end
+
+    get myfin_transaction_explorer_path, params: { entity_ids: [ @personal.id ] }
+
+    assert_response :success
+    assert_select "fieldset[data-category-catalog='JPW']", count: 1
+    assert_select "fieldset[data-category-catalog='GCI']", count: 0
+
+    get myfin_transaction_explorer_path, params: { entity_ids: [ @gci.id ] }
+
+    assert_response :success
+    assert_select "fieldset[data-category-catalog='JPW']", count: 0
+    assert_select "fieldset[data-category-catalog='GCI']", count: 1
   end
 
   test "renders category editors only for editable rows" do

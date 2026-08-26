@@ -2,36 +2,47 @@
 
 <% filter_options = report.filter_options %>
 <% selected_filters = report.selected_filters %>
-<% jpw_categories = filter_options.detail_categories.select { |_id, scheme, _name| scheme == "JPW" } %>
-<% gci_categories = filter_options.detail_categories.select { |_id, scheme, _name| scheme == "GCI" } %>
+<% available_detail_ids = report.category_availability[:detail_category_ids].map(&:to_s).to_set %>
+<% available_tag_ids = report.category_availability[:tag_ids].map(&:to_s).to_set %>
+<% jpw_categories = filter_options.detail_categories.select { |id, scheme, _name| scheme == "JPW" && available_detail_ids.include?(id.to_s) } %>
+<% gci_categories = filter_options.detail_categories.select { |id, scheme, _name| scheme == "GCI" && available_detail_ids.include?(id.to_s) } %>
+<% visible_tags = filter_options.tags.select { |id, _name| available_tag_ids.include?(id.to_s) } %>
 
 <%= form_with url: myfin_transaction_explorer_path,
       method: :get,
       data: { controller: "auto-submit-form" },
       class: "border-y border-secondary bg-container" do %>
-  <div class="grid gap-px bg-secondary sm:grid-cols-2 @6xl:grid-cols-[1.15fr_0.72fr_1fr_0.95fr_1.05fr]">
+  <div data-testid="transaction-explorer-primary-filters" class="flex items-center gap-px overflow-x-auto bg-secondary">
     <%= render "myfin/transaction_explorers/slicer",
           label: t("myfin.transaction_explorer.filters.entities"),
           key: :entity_ids,
           options: filter_options.entities,
-          selected: selected_filters[:entity_ids] %>
+          selected: selected_filters[:entity_ids],
+          inline: true,
+          compact: true %>
     <%= render "myfin/transaction_explorers/slicer",
           label: t("myfin.transaction_explorer.filters.years"),
           key: :years,
           options: filter_options.years.map { |year| [ year, year ] },
-          selected: selected_filters[:years] %>
+          selected: selected_filters[:years],
+          inline: true,
+          compact: true %>
     <%= render "myfin/transaction_explorers/slicer",
           label: t("myfin.transaction_explorer.filters.months"),
           key: :months,
           options: filter_options.months.map { |month| [ month, Date::ABBR_MONTHNAMES.fetch(month) ] },
-          selected: selected_filters[:months] %>
+          selected: selected_filters[:months],
+          inline: true,
+          compact: true %>
     <%= render "myfin/transaction_explorers/slicer",
           label: t("myfin.transaction_explorer.filters.types"),
           key: :types,
           options: filter_options.types.map { |type| [ type, type ] },
-          selected: selected_filters[:types] %>
+          selected: selected_filters[:types],
+          inline: true,
+          compact: true %>
 
-    <div class="flex min-w-48 items-center gap-2 bg-container px-3 py-2 sm:col-span-2 @6xl:col-span-1">
+    <div class="flex min-w-64 flex-1 items-center gap-2 bg-container px-2 py-1">
       <%= render DS::SearchInput.new(
             name: :search,
             value: params[:search],
@@ -46,15 +57,15 @@
     </div>
   </div>
 
-  <details <%= "open" if %i[detail_category_ids wdg_rollup_ids include_tag_ids exclude_tag_ids].any? { |key| params.key?(key) } %> class="group border-t border-secondary bg-container-inset">
-    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2 text-xs font-medium text-secondary transition-colors hover:bg-container-inset-hover hover:text-primary focus-ring motion-reduce:transition-none">
+  <details class="group border-t border-secondary bg-container-inset">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-1 text-xs font-medium text-secondary transition-colors hover:bg-container-inset-hover hover:text-primary focus-ring motion-reduce:transition-none">
       <span class="inline-flex items-center gap-2">
         <%= icon("sliders-horizontal", size: "sm") %>
         <%= t("myfin.transaction_explorer.filters.more") %>
       </span>
       <%= icon("chevron-down", size: "sm", class: "transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none") %>
     </summary>
-    <div class="grid border-t border-secondary @4xl:grid-cols-3 @4xl:divide-x @4xl:divide-secondary">
+    <div class="grid border-t border-secondary @4xl:grid-cols-2 @4xl:divide-x @4xl:divide-secondary">
       <% if jpw_categories.any? %>
         <%= render "myfin/transaction_explorers/slicer",
               label: "JPW categories",
@@ -65,17 +76,6 @@
               explicit: params.key?(:detail_category_ids),
               inline: true,
               catalog: "JPW" %>
-      <% end %>
-      <% if filter_options.wdg_rollups.any? %>
-        <%= render "myfin/transaction_explorers/slicer",
-              label: t("myfin.transaction_explorer.filters.wdg_rollup"),
-              key: :wdg_rollup_ids,
-              options: filter_options.wdg_rollups,
-              selected: selected_filters[:wdg_rollup_ids],
-              available: report.category_availability[:wdg_rollup_ids],
-              explicit: params.key?(:wdg_rollup_ids),
-              inline: true,
-              catalog: "WDG" %>
       <% end %>
       <% if gci_categories.any? %>
         <%= render "myfin/transaction_explorers/slicer",
@@ -88,11 +88,11 @@
               inline: true,
               catalog: "GCI" %>
       <% end %>
-      <% if filter_options.tags.any? %>
+      <% if visible_tags.any? %>
         <%= render "myfin/transaction_explorers/slicer",
               label: t("myfin.transaction_explorer.filters.include_tags"),
               key: :include_tag_ids,
-              options: filter_options.tags,
+              options: visible_tags,
               selected: selected_filters[:include_tag_ids],
               available: report.category_availability[:tag_ids],
               explicit: params.key?(:include_tag_ids),
@@ -100,7 +100,7 @@
         <%= render "myfin/transaction_explorers/slicer",
               label: t("myfin.transaction_explorer.filters.exclude_tags"),
               key: :exclude_tag_ids,
-              options: filter_options.tags,
+              options: visible_tags,
               selected: selected_filters[:exclude_tag_ids],
               available: report.category_availability[:tag_ids],
               explicit: params.key?(:exclude_tag_ids),
