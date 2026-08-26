@@ -13,7 +13,12 @@
 .myfin-tabulator-shell .tabulator .tabulator-row .tabulator-cell {
   border-color: color-mix(in srgb, currentColor 18%, transparent);
   background: var(--color-container);
-  color: inherit;
+  color: #171717;
+}
+
+[data-theme="dark"] .myfin-tabulator-shell .tabulator .tabulator-row,
+[data-theme="dark"] .myfin-tabulator-shell .tabulator .tabulator-row .tabulator-cell {
+  color: #f5f5f5;
 }
 
 .myfin-tabulator-shell .tabulator .tabulator-header,
