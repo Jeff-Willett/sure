@@ -62,7 +62,7 @@ export default class extends Controller {
         field: "date",
         frozen: true,
         width: 105,
-        sorter: "date",
+        sorter: "string",
       },
       { title: "Entity", field: "entity", frozen: true, width: 76 },
       { title: "WDG rollup", field: "wdg_rollup", width: 190 },
