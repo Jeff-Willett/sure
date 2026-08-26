@@ -1,10 +1,9 @@
 export const TRANSACTION_EXPLORER_COLUMN_WIDTHS_KEY =
-  "transaction-explorer:column-widths:v1"
+  "transaction-explorer:column-widths:v2"
 
 export const TRANSACTION_EXPLORER_COLUMNS = {
   date: { defaultWidth: 140, minWidth: 96 },
-  entity: { defaultWidth: 260, minWidth: 180 },
-  catalog: { defaultWidth: 120, minWidth: 96 },
+  entity: { defaultWidth: 84, minWidth: 64 },
   wdg_rollup: { defaultWidth: 180, minWidth: 140 },
   detail_category: { defaultWidth: 180, minWidth: 140 },
   tags: { defaultWidth: 240, minWidth: 180 },

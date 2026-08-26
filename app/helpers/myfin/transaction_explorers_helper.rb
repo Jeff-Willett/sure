@@ -2,8 +2,7 @@ module Myfin::TransactionExplorersHelper
   TransactionExplorerColumn = Data.define(:key, :default_width, :min_width)
   TRANSACTION_EXPLORER_COLUMNS = {
     "date" => TransactionExplorerColumn.new(key: "date", default_width: 140, min_width: 96),
-    "entity" => TransactionExplorerColumn.new(key: "entity", default_width: 260, min_width: 180),
-    "catalog" => TransactionExplorerColumn.new(key: "catalog", default_width: 120, min_width: 96),
+    "entity" => TransactionExplorerColumn.new(key: "entity", default_width: 84, min_width: 64),
     "wdg_rollup" => TransactionExplorerColumn.new(key: "wdg_rollup", default_width: 180, min_width: 140),
     "detail_category" => TransactionExplorerColumn.new(key: "detail_category", default_width: 180, min_width: 140),
     "tags" => TransactionExplorerColumn.new(key: "tags", default_width: 240, min_width: 180),
@@ -17,7 +16,7 @@ module Myfin::TransactionExplorersHelper
     when "Donna", "Green Capital Investing"
       %w[date entity detail_category tags description account amount]
     when "Everything"
-      %w[date entity catalog wdg_rollup detail_category tags description account amount]
+      %w[date entity wdg_rollup detail_category tags description account amount]
     else
       %w[date entity wdg_rollup detail_category tags description account amount]
     end
@@ -30,10 +29,6 @@ module Myfin::TransactionExplorersHelper
       .where(name: %w[JPW DIS GCI])
       .pluck(:name, :id)
       .to_h
-  end
-
-  def transaction_explorer_catalog_label(name)
-    name == "GCI" ? "CGI" : name
   end
 
   ROLLUP_EMOJI_RULES = [

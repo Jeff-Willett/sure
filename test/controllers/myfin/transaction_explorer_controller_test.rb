@@ -164,8 +164,10 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     groceries_category = @family.myfin_category_schemes.find_by!(name: "JPW").scheme_categories.find_by!(name: "Groceries")
     assert_select "div[data-controller~='transaction-explorer-grid']", count: 1 do
-      assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 9
-      assert_select "thead th", count: 9 do |headers|
+      assert_select "colgroup[data-transaction-explorer-columns-target='colgroup'] col[data-column]", count: 8
+      assert_select "colgroup col[data-column='entity'][style*='width: 84px']", count: 1
+      assert_select "th[data-column='catalog']", count: 0
+      assert_select "thead th", count: 8 do |headers|
         headers.each do |header|
           assert_select header, "[data-transaction-explorer-columns-target='handle'][tabindex='0']", count: 1
         end
@@ -314,7 +316,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path
 
     assert_response :success
-    assert_select "th[data-column='catalog']", count: 1
+    assert_select "th[data-column='catalog']", count: 0
     assert_select "th[data-column='wdg_rollup']", count: 1
     assert_select "tr[data-entry-id='#{entry.id}'] td[data-scheme='GCI'] form", count: 1
     assert_select "tr[data-entry-id='#{entry.id}'] [data-column='tags']", count: 1
@@ -345,7 +347,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     get myfin_transaction_explorer_path
 
     assert_response :success
-    assert_select "th[data-column='catalog']", text: "Catalog", count: 1
+    assert_select "th[data-column='catalog']", count: 0
     assert_select "tr[data-entry-id='#{jpw_entry.id}'] td[data-scheme='JPW']", text: /Shared display Shopping/, count: 1
     assert_select "tr[data-entry-id='#{donna_entry.id}'] td[data-scheme='DIS']", text: /Shared display Shopping/, count: 1
   end

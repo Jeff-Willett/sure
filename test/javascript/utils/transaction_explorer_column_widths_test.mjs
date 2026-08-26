@@ -12,7 +12,7 @@ import {
 } from "../../../app/javascript/utils/transaction_explorer_column_widths.mjs"
 
 test("exports a stable column-width storage key", () => {
-  assert.equal(TRANSACTION_EXPLORER_COLUMN_WIDTHS_KEY, "transaction-explorer:column-widths:v1")
+  assert.equal(TRANSACTION_EXPLORER_COLUMN_WIDTHS_KEY, "transaction-explorer:column-widths:v2")
 })
 
 test("clamps width by min width and rounds down to integer", () => {
@@ -33,13 +33,13 @@ test("throws for unknown columns when clamping", () => {
 test("resizes one column without mutating other columns", () => {
   const current = {
     date: 140,
-    entity: 260,
+    entity: 84,
     description: 360,
   }
 
   const next = resizeWidths(current, "date", 20)
   assert.equal(next.date, 160)
-  assert.equal(next.entity, 260)
+  assert.equal(next.entity, 84)
   assert.equal(next.description, 360)
   assert.notEqual(next, current)
   assert.equal(current.date, 140)
