@@ -47,4 +47,12 @@ class MyfinTransactionExplorerFiltersTest < ActiveSupport::TestCase
     assert_equal [ 2025 ], filters.values_for(:years)
     assert_equal "rent", filters.search
   end
+
+  test "includes refunds in a remembered all-types selection from before refunds existed" do
+    filters = Myfin::TransactionExplorer::Filters.from_params(
+      types: %w[Expense Income Transfer]
+    )
+
+    assert_equal %w[Expense Income Transfer Refund], filters.values_for(:types)
+  end
 end

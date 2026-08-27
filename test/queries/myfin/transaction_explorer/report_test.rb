@@ -248,6 +248,43 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     assert_equal report.rows.sum(&:amount), report.rollup.sum(&:amount)
   end
 
+  test "nets credits in an expense category instead of reporting them as income" do
+    purchase = create_entry(
+      entity_amounts: { @personal => 120 },
+      date: Date.new(2026, 8, 5),
+      name: "Refund net test purchase",
+      amount: 120,
+      wdg: "Shopping",
+      jpw: "Shopping"
+    )
+    refund = create_entry(
+      entity_amounts: { @personal => -20 },
+      date: Date.new(2026, 8, 6),
+      name: "Refund net test refund",
+      amount: -20,
+      wdg: "Shopping",
+      jpw: "Shopping"
+    )
+
+    report = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @everything_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params(
+        entity_ids: [ @personal.id ],
+        search: "refund net test"
+      )
+    )
+    rows = report.rows.select { |row| [ purchase.id, refund.id ].include?(row.entry_id) }
+
+    assert_equal %w[Refund Expense], rows.map(&:type)
+    assert_equal 100.to_d, report.metrics.expenses
+    assert_equal 0.to_d, report.metrics.income
+    expense_rollup = report.rollup.find { |rollup| rollup.type == "Expense" }
+    shopping = expense_rollup.groups.flat_map(&:categories).find { |category| category.jpw == "Shopping" }
+    assert_equal(-100.to_d, shopping.amount)
+    assert_equal 2, shopping.count
+  end
+
   test "available slicers retain unselected entities and classification values" do
     create_entry(
       entity_amounts: { @personal => 120 },

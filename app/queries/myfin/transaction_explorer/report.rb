@@ -59,7 +59,7 @@ module Myfin
         :profile_scheme_name
       )
 
-      TYPE_ORDER = { "Expense" => 0, "Income" => 1, "Transfer" => 2 }.freeze
+      TYPE_ORDER = { "Expense" => 0, "Refund" => 1, "Income" => 2, "Transfer" => 3 }.freeze
       LEGACY_CATEGORY_TAG = /\A(?:JPW|GCI|DIS|WDG):\s/.freeze
 
       def self.call(user:, filters:, profile: nil)
@@ -141,7 +141,7 @@ module Myfin
         end
 
         def build_rows(entity_ids)
-          source_rows.filter_map do |source_row|
+          rows = source_rows.filter_map do |source_row|
             selected_allocations = source_row.fetch(:allocations).select do |allocation|
               entity_ids.include?(allocation.entity_id)
             end
@@ -184,6 +184,8 @@ module Myfin
               editable: editable?(entry)
             )
           end
+
+          classify_refunds(rows)
         end
 
         def selected_entity_ids
@@ -273,16 +275,19 @@ module Myfin
         end
 
         def build_metrics(rows)
+          expense_rows = rows.select { |row| row.type == "Expense" }
+          refund_rows = rows.select { |row| row.type == "Refund" }
+
           Metrics.new(
             transactions: rows.size,
-            expenses: rows.select { |row| row.type == "Expense" }.sum(BigDecimal("0")) { |row| row.amount.abs },
+            expenses: expense_rows.sum(BigDecimal("0")) { |row| row.amount.abs } - refund_rows.sum(BigDecimal("0"), &:amount),
             income: rows.select { |row| row.type == "Income" }.sum(BigDecimal("0"), &:amount),
             transfer_net: rows.select { |row| row.type == "Transfer" }.sum(BigDecimal("0"), &:amount)
           )
         end
 
         def build_rollup(rows)
-          rows.group_by(&:type).map do |type, type_rows|
+          rows.group_by { |row| row.type == "Refund" ? "Expense" : row.type }.map do |type, type_rows|
             groups = rollup_mode == "wdg" ? build_wdg_groups(type_rows) : build_entity_groups(type_rows)
 
             RollupType.new(
@@ -412,6 +417,22 @@ module Myfin
           return "Transfer" if %w[funds_movement cc_payment].include?(transaction.kind)
 
           allocated_amount.negative? ? "Income" : "Expense"
+        end
+
+        def classify_refunds(rows)
+          expense_category_ids = rows
+            .select { |row| row.type == "Expense" }
+            .map(&:detail_category_id)
+            .compact
+            .to_set
+
+          rows.map do |row|
+            expense_credit = row.type == "Income" &&
+              row.detail_category_id.in?(expense_category_ids) &&
+              (row.wdg_rollup || row.wdg) != "Transfer"
+
+            expense_credit ? row.with(type: "Refund") : row
+          end
         end
 
         def editable?(entry)
