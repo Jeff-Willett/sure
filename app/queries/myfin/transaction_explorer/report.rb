@@ -76,7 +76,8 @@ module Myfin
         raise ProfileFamilyMismatch if profile && profile.family_id != user.family_id
 
         available_rows = build_rows(all_entity_ids)
-        rows = apply_filters(build_rows(selected_entity_ids))
+        selected_rows = build_rows(selected_entity_ids)
+        rows = apply_filters(selected_rows)
         filter_options = build_filter_options(available_rows)
 
         Result.new(
@@ -86,7 +87,7 @@ module Myfin
           filter_options: filter_options,
           category_options: build_category_options,
           selected_filters: build_selected_filters(filter_options),
-          category_availability: build_category_availability(build_rows(selected_entity_ids)),
+          category_availability: build_category_availability(selected_rows),
           rollup_mode: rollup_mode,
           tag_options: visible_tags(user.family.tags.alphabetically.to_a),
           excluded_tag_names: user.family.tags.where(id: exclude_tag_ids).alphabetically.pluck(:name),

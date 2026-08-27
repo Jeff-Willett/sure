@@ -23,7 +23,8 @@ module Myfin
       return empty_result("split_allocation") unless allocations.one?
 
       entity = allocations.first.entity
-      scheme = entity.category_schemes.find_by(is_default: true) || entity.category_schemes.first
+      schemes = entity.category_schemes.to_a
+      scheme = schemes.find(&:is_default?) || schemes.first
       classification = entry.transaction.myfin_classifications.find do |candidate|
         candidate.category_scheme_id == scheme&.id
       end

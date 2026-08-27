@@ -5,7 +5,7 @@ import {
   TRANSACTION_EXPLORER_VIEW_STATE_KEY,
   parseExplorerViewState,
   serializeExplorerViewState,
-} from "../utils/transaction_explorer_view_state.mjs";
+} from "utils/transaction_explorer_view_state";
 
 export default class extends Controller {
   static targets = [

@@ -570,6 +570,32 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     assert_equal 1, account_share_loads
   end
 
+  test "keeps explicitly filtered report queries within budget" do
+    4.times do |index|
+      create_entity_entry(
+        entity: @personal,
+        scheme: @jpw_scheme,
+        category: @jpw_scheme.scheme_categories.create!(name: "Query budget category #{index}"),
+        amount: index + 10
+      )
+    end
+
+    ActiveRecord::Base.connection.clear_query_cache
+    queries = capture_sql_queries do
+      Myfin::TransactionExplorer::Report.call(
+        user: @user,
+        profile: @everything_profile,
+        filters: Myfin::TransactionExplorer::Filters.from_params(entity_ids: [ @personal.id ])
+      )
+    end
+
+    per_row_scheme_queries = queries.grep(
+      /FROM "myfin_category_schemes" WHERE .*"entity_id".*"is_default".*LIMIT/
+    )
+    assert_empty per_row_scheme_queries
+    assert_operator queries.size, :<=, 35
+  end
+
   private
     def create_entity_entry(entity:, scheme:, category:, amount:)
       entry = create_entry(
