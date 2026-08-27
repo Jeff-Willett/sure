@@ -10,7 +10,12 @@
 
 <%= form_with url: myfin_transaction_explorer_path,
       method: :get,
-      data: { controller: "auto-submit-form" },
+      data: {
+        controller: "auto-submit-form",
+        auto_submit_form_persistence_key_value: "myfin-transaction-explorer-filters",
+        turbo_frame: "transaction-explorer-workspace",
+        turbo_action: "replace"
+      },
       class: "border-y border-secondary bg-container" do %>
   <div data-testid="transaction-explorer-primary-filters" class="flex items-center gap-px overflow-x-auto bg-secondary">
     <%= render "myfin/transaction_explorers/slicer",
@@ -57,6 +62,7 @@
           ) %>
       <%= link_to t("myfin.transaction_explorer.filters.reset"),
             myfin_transaction_explorer_path,
+            data: { action: "auto-submit-form#clearRememberedFilters", turbo_frame: "transaction-explorer-workspace" },
             class: "shrink-0 rounded-md px-1.5 py-1 text-xs font-medium text-secondary transition-colors hover:bg-surface-hover hover:text-primary focus-ring motion-reduce:transition-none" %>
     </div>
   </div>

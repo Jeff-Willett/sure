@@ -6,13 +6,21 @@ export default class extends Controller {
   static targets = ["auto"];
   static values = {
     triggerEvent: { type: String, default: "input" },
+    persistenceKey: String,
   };
 
   connect() {
+    if (this.#hasFilterQuery()) {
+      this.rememberFilters();
+    } else {
+      this.restoreRememberedFilters();
+    }
+
     this.autoTargets.forEach((element) => {
       const event = this.#getTriggerEvent(element);
       element.addEventListener(event, this.handleInput);
     });
+    this.element.addEventListener("submit", this.rememberFilters);
   }
 
   disconnect() {
@@ -20,6 +28,7 @@ export default class extends Controller {
       const event = this.#getTriggerEvent(element);
       element.removeEventListener(event, this.handleInput);
     });
+    this.element.removeEventListener("submit", this.rememberFilters);
   }
 
   handleInput = (event) => {
@@ -30,6 +39,57 @@ export default class extends Controller {
       this.element.requestSubmit();
     }, this.#debounceTimeout(target));
   };
+
+  rememberFilters = () => {
+    if (!this.hasPersistenceKeyValue) return;
+
+    try {
+      const query = new URLSearchParams(new FormData(this.element)).toString();
+      localStorage.setItem(this.persistenceKeyValue, query);
+    } catch (_error) {
+      // Filtering still works when browser storage is unavailable.
+    }
+  };
+
+  clearRememberedFilters() {
+    if (!this.hasPersistenceKeyValue) return;
+
+    try {
+      localStorage.removeItem(this.persistenceKeyValue);
+    } catch (_error) {
+      // Reset navigation still works when browser storage is unavailable.
+    }
+  }
+
+  restoreRememberedFilters() {
+    if (!this.hasPersistenceKeyValue || this.#hasFilterQuery()) return;
+
+    try {
+      const query = localStorage.getItem(this.persistenceKeyValue);
+      if (!query) return;
+
+      const url = `${window.location.pathname}?${query}`;
+      window.Turbo?.visit(url, { action: "replace" });
+    } catch (_error) {
+      // The server-rendered default remains available without browser storage.
+    }
+  }
+
+  #hasFilterQuery() {
+    const filterNames = [
+      "entity_ids[]",
+      "years[]",
+      "months[]",
+      "types[]",
+      "detail_category_ids[]",
+      "wdg_rollup_ids[]",
+      "include_tag_ids[]",
+      "exclude_tag_ids[]",
+      "search",
+    ];
+    const params = new URLSearchParams(window.location.search);
+    return filterNames.some((name) => params.has(name));
+  }
 
   #getTriggerEvent(element) {
     // Check if element has explicit trigger event set

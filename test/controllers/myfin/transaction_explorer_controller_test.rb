@@ -67,7 +67,11 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
       jpw: "Business Software"
     )
 
-    get myfin_transaction_explorer_path
+    get myfin_transaction_explorer_path, params: {
+      entity_ids: [ @personal.id, @gci.id ],
+      years: [ 2026 ],
+      months: [ 8 ]
+    }
 
     assert_response :success
     assert_select "fieldset[data-transaction-explorer-slicer-key-value='entity_ids']", text: /JPW/, count: 1
@@ -75,6 +79,20 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     assert_select "fieldset[data-transaction-explorer-slicer-key-value='entity_ids']", text: /JPW Personal|Green Capital Investing/, count: 0
     assert_equal "JPW", tabulator_row(personal_entry).fetch("entity")
     assert_equal "CGI", tabulator_row(gci_entry).fetch("entity")
+  end
+
+  test "defaults a new Explorer visit to JPW and the current period" do
+    travel_to Time.zone.local(2026, 8, 26) do
+      get myfin_transaction_explorer_path
+
+      assert_response :success
+      assert_select "input[name='entity_ids[]'][value='#{@personal.id}']", checked: "checked"
+      assert_select "input[name='entity_ids[]'][value='#{@gci.id}']:not([checked])", count: 1
+      assert_select "input[name='years[]'][value='2026']", checked: "checked"
+      assert_select "input[name='months[]'][value='8']", checked: "checked"
+      assert_select "turbo-frame#transaction-explorer-workspace[data-turbo-action='replace']", count: 1
+      assert_select "form[data-auto-submit-form-persistence-key-value='myfin-transaction-explorer-filters'][data-turbo-frame='transaction-explorer-workspace']", count: 1
+    end
   end
 
   test "renders one shared filtered set in the rollup and ledger" do
@@ -205,7 +223,11 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
       jpw: "Business Software"
     )
 
-    get myfin_transaction_explorer_path
+    get myfin_transaction_explorer_path, params: {
+      entity_ids: [ @personal.id, @gci.id ],
+      years: [ 2026 ],
+      months: [ 8 ]
+    }
 
     assert_response :success
     assert_select "[data-testid='transaction-explorer-primary-filters']", count: 1 do

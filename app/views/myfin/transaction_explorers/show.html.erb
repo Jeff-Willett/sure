@@ -4,7 +4,9 @@
   <%= stylesheet_link_tag "tabulator.min", "myfin_tabulator", "data-turbo-track": "reload" %>
 <% end %>
 
-<div class="myfin-tabulator-shell @container flex min-h-0 flex-1 flex-col lg:-mx-10">
+<%= turbo_frame_tag "transaction-explorer-workspace",
+      class: "myfin-tabulator-shell @container flex min-h-0 flex-1 flex-col lg:-mx-10",
+      data: { turbo_action: "replace" } do %>
   <h1 class="sr-only"><%= t("myfin.transaction_explorer.title") %></h1>
 
   <div id="transaction-explorer-filters">
@@ -29,4 +31,4 @@
         tag_options: @report.tag_options,
         rollup: @report.rollup,
         rollup_mode: @report.rollup_mode %>
-</div>
+<% end %>
