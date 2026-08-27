@@ -1,8 +1,9 @@
-<%# locals: (label:, key:, options:, selected:, inline: false, compact: false, nowrap: false, available: nil, explicit: false, catalog: nil) %>
+<%# locals: (label:, key:, options:, selected:, inline: false, compact: false, nowrap: false, available: nil, explicit: false, catalog: nil, hidden: false) %>
 
 <% available ||= options.map { |value, _text| value.to_s }.to_set %>
 
 <fieldset
+  <%= "hidden" if hidden %>
   class="<%= class_names(
     "min-w-0 bg-container",
     "flex flex-wrap items-center gap-x-2 gap-y-1.5" => inline && !compact,

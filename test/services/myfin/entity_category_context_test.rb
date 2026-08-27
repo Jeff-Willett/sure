@@ -107,6 +107,25 @@ class MyfinEntityCategoryContextTest < ActiveSupport::TestCase
     assert_nil result.classification
   end
 
+  test "uses preloaded category schemes without another query" do
+    entry = classified_entry(entity: @jpw, scheme: @jpw_scheme, category: @restaurants)
+    preloaded_entry = Entry
+      .includes(
+        myfin_allocations: { entity: :category_schemes },
+        entryable: { myfin_classifications: { scheme_category: :wdg_rollup_category } }
+      )
+      .find(entry.id)
+
+    queries = capture_sql_queries do
+      result = Myfin::EntityCategoryContext.call(entry: preloaded_entry)
+      assert_equal @jpw_scheme, result.scheme
+      assert_equal @restaurants, result.detail_category
+    end
+
+    scheme_queries = queries.grep(/FROM "myfin_category_schemes"/)
+    assert_empty scheme_queries
+  end
+
   private
     def classified_entry(entity:, scheme:, category:)
       entry = create_entry

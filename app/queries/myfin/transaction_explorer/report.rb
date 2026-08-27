@@ -12,6 +12,9 @@ module Myfin
         :type,
         :entity_ids,
         :entity_names,
+        :entity_amounts,
+        :entity_labels,
+        :transfer,
         :wdg,
         :wdg_category_id,
         :jpw,
@@ -46,6 +49,7 @@ module Myfin
       )
       Result = Data.define(
         :rows,
+        :working_rows,
         :metrics,
         :rollup,
         :filter_options,
@@ -76,17 +80,20 @@ module Myfin
         raise ProfileFamilyMismatch if profile && profile.family_id != user.family_id
 
         available_rows = build_rows(all_entity_ids)
-        rows = apply_filters(build_rows(selected_entity_ids))
+        working_rows = profile_entity_ids == all_entity_ids ? available_rows : build_rows(profile_entity_ids)
+        selected_rows = selected_entity_ids == profile_entity_ids ? working_rows : build_rows(selected_entity_ids)
+        rows = apply_filters(selected_rows)
         filter_options = build_filter_options(available_rows)
 
         Result.new(
           rows: rows,
+          working_rows: working_rows,
           metrics: build_metrics(rows),
           rollup: build_rollup(rows),
           filter_options: filter_options,
           category_options: build_category_options,
           selected_filters: build_selected_filters(filter_options),
-          category_availability: build_category_availability(build_rows(selected_entity_ids)),
+          category_availability: build_category_availability(selected_rows),
           rollup_mode: rollup_mode,
           tag_options: visible_tags(user.family.tags.alphabetically.to_a),
           excluded_tag_names: user.family.tags.where(id: exclude_tag_ids).alphabetically.pluck(:name),
@@ -166,6 +173,13 @@ module Myfin
               type: transaction_type(transaction, allocated_amount),
               entity_ids: selected_allocations.map(&:entity_id).uniq,
               entity_names: selected_allocations.map { |allocation| allocation.entity.display_name }.uniq.sort,
+              entity_amounts: selected_allocations.to_h do |allocation|
+                [ allocation.entity_id, allocation.amount * -1 ]
+              end,
+              entity_labels: selected_allocations.to_h do |allocation|
+                [ allocation.entity_id, allocation.entity.display_name ]
+              end,
+              transfer: transfer?(transaction),
               wdg: wdg_label,
               wdg_category_id: wdg_id,
               jpw: detail_label,
@@ -219,7 +233,7 @@ module Myfin
             .select { |row| excluded_key == :types || type_filter_match?(row) }
             .select { |row| excluded_key == :wdg_categories || keep_filter?(:wdg_categories, row.wdg) }
             .select { |row| excluded_key == :jpw_categories || keep_filter?(:jpw_categories, row.jpw) }
-            .select { |row| excluded_key == :detail_category_ids || keep_filter?(:detail_category_ids, row.detail_category_id) }
+            .select { |row| excluded_key == :detail_category_ids || detail_category_filter_match?(row) }
             .select { |row| excluded_key == :wdg_rollup_ids || optional_filter_match?(:wdg_rollup_ids, row.wdg_rollup_id) }
             .select { |row| excluded_key == :include_tag_ids || include_tag_match?(row) }
             .reject { |row| excluded_key != :exclude_tag_ids && exclude_tag_match?(row) }
@@ -247,6 +261,15 @@ module Myfin
           return true if filters.values_for(key).empty?
 
           filters.values_for(key).include?(value)
+        end
+
+        def detail_category_filter_match?(row)
+          return true unless filters.explicit?(:detail_category_ids)
+
+          selected = filters.values_for(:detail_category_ids)
+          return selected.include?("__uncategorized__") if row.detail_category_id.nil?
+
+          selected.include?(row.detail_category_id)
         end
 
         def include_tag_match?(row)
@@ -392,10 +415,7 @@ module Myfin
             types: filters.selected_values(:types, available: filter_options.types),
             wdg_categories: filters.selected_values(:wdg_categories, available: filter_options.wdg_categories),
             jpw_categories: filters.selected_values(:jpw_categories, available: filter_options.jpw_categories),
-            detail_category_ids: filters.selected_values(
-              :detail_category_ids,
-              available: filter_options.detail_categories.map(&:first)
-            ),
+            detail_category_ids: selected_detail_category_values(filter_options),
             wdg_rollup_ids: selected_optional_values(:wdg_rollup_ids),
             include_tag_ids: selected_tag_values(:include_tag_ids),
             exclude_tag_ids: selected_tag_values(:exclude_tag_ids)
@@ -404,6 +424,12 @@ module Myfin
 
         def selected_tag_values(key)
           selected_optional_values(key)
+        end
+
+        def selected_detail_category_values(filter_options)
+          return filters.values_for(:detail_category_ids).map(&:to_s) if filters.explicit?(:detail_category_ids)
+
+          filter_options.detail_categories.map { |id, _scheme, _name| id.to_s }
         end
 
         def selected_optional_values(key)
@@ -423,9 +449,13 @@ module Myfin
         end
 
         def transaction_type(transaction, allocated_amount)
-          return "Transfer" if %w[funds_movement cc_payment].include?(transaction.kind)
+          return "Transfer" if transfer?(transaction)
 
           allocated_amount.negative? ? "Income" : "Expense"
+        end
+
+        def transfer?(transaction)
+          transaction.kind.in?(%w[funds_movement cc_payment])
         end
 
         def classify_refunds(rows)

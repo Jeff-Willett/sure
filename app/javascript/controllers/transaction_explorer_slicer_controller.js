@@ -63,6 +63,12 @@ export default class extends Controller {
   }
 
   #submit() {
+    this.element.dispatchEvent(
+      new CustomEvent("explorer-slicer-change", {
+        bubbles: true,
+        detail: { key: this.keyValue },
+      }),
+    );
     this.element.form?.requestSubmit();
   }
 

@@ -83,16 +83,93 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
 
   test "defaults a new Explorer visit to JPW and the current period" do
     travel_to Time.zone.local(2026, 8, 26) do
+      create_classified_entry(
+        account: accounts(:depository),
+        entity: @personal,
+        date: Date.new(2026, 8, 26),
+        name: "Default-filter JPW expense",
+        amount: 25,
+        wdg: "Shopping",
+        jpw: "Shopping"
+      )
+      create_classified_entry(
+        account: accounts(:credit_card),
+        entity: @gci,
+        date: Date.new(2026, 8, 26),
+        name: "Default-filter CGI expense",
+        amount: 20,
+        wdg: nil,
+        jpw: "Business Software"
+      )
       get myfin_transaction_explorer_path
 
       assert_response :success
+      assert_equal "no-store", response.headers.fetch("Cache-Control")
       assert_select "input[name='entity_ids[]'][value='#{@personal.id}']", checked: "checked"
       assert_select "input[name='entity_ids[]'][value='#{@gci.id}']:not([checked])", count: 1
       assert_select "input[name='years[]'][value='2026']", checked: "checked"
       assert_select "input[name='months[]'][value='8']", checked: "checked"
-      assert_select "turbo-frame#transaction-explorer-workspace[data-turbo-action='replace']", count: 1
-      assert_select "form[data-auto-submit-form-persistence-key-value='myfin-transaction-explorer-filters'][data-turbo-frame='transaction-explorer-workspace']", count: 1
+      assert_select "turbo-frame#transaction-explorer-workspace[data-controller='transaction-explorer-tabulator']", count: 1
+      workspace = css_select("turbo-frame#transaction-explorer-workspace").first
+      defaults = JSON.parse(workspace["data-transaction-explorer-tabulator-default-filters-value"])
+      assert_equal [ @personal.id ], defaults.fetch("entity_ids")
+      assert_equal [ "2026" ], defaults.fetch("years")
+      assert_equal [ "8" ], defaults.fetch("months")
+      assert_equal "", defaults.fetch("search")
+      assert_not defaults.key?("detail_category_ids")
+      assert_select "form[data-transaction-explorer-tabulator-target='form'][data-action*='submit->transaction-explorer-tabulator#filterSubmitted'][data-action*='change->transaction-explorer-tabulator#filterChanged']", count: 1
+      assert_select "form[data-controller='auto-submit-form']", count: 0
     end
+  end
+
+  test "renders an in-memory working set beyond the current filters" do
+    gci_entry = create_classified_entry(
+      account: accounts(:credit_card),
+      entity: @gci,
+      date: Date.new(2025, 7, 9),
+      name: "Working set CGI expense",
+      amount: 75,
+      wdg: nil,
+      jpw: "Business Software"
+    )
+
+    get "/myfin/transaction_explorer/data", params: {
+      entity_ids: [ @personal.id ],
+      years: [ 2026 ],
+      months: [ 8 ]
+    }, as: :json
+
+    assert_response :success
+    assert_equal "no-store", response.headers.fetch("Cache-Control")
+    assert_equal false, response.parsed_body.fetch("fallback")
+    assert_operator response.parsed_body.fetch("total_count"), :>=, 1
+    working_row = response.parsed_body.fetch("rows").find { |row| row.fetch("id") == gci_entry.id }
+    assert working_row
+    assert_equal({ @gci.id => "-75.0" }, working_row.fetch("entity_amounts"))
+    assert_equal({ @gci.id => "CGI" }, working_row.fetch("entity_labels"))
+    assert_equal [ @gci.id ], working_row.fetch("entity_ids")
+    assert_equal false, working_row.fetch("transfer")
+    assert working_row.key?("tag_ids")
+    assert working_row.key?("wdg_rollup_id")
+    assert_nil working_row.fetch("wdg_rollup")
+    assert working_row.fetch("wdg_rollup_display").present?
+  end
+
+  test "falls back instead of truncating a working set above the browser limit" do
+    oversized_report = Data.define(:working_rows).new(
+      Array.new(Myfin::TransactionExplorersController::MAX_WORKING_ROWS + 1)
+    )
+
+    Myfin::TransactionExplorersController.stub(:report_for, oversized_report) do
+      get "/myfin/transaction_explorer/data", as: :json
+    end
+
+    assert_response :success
+    assert_equal "no-store", response.headers.fetch("Cache-Control")
+    assert_equal true, response.parsed_body.fetch("fallback")
+    assert_equal [], response.parsed_body.fetch("rows")
+    assert_equal Myfin::TransactionExplorersController::MAX_WORKING_ROWS + 1,
+      response.parsed_body.fetch("total_count")
   end
 
   test "renders one shared filtered set in the rollup and ledger" do
@@ -253,12 +330,14 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "fieldset[data-category-catalog='JPW']", count: 1
-    assert_select "fieldset[data-category-catalog='GCI']", count: 0
+    assert_select "fieldset[data-category-catalog='GCI'][hidden]", count: 1
+    assert_select "fieldset[data-category-catalog='GCI']:not([hidden])", count: 0
 
     get myfin_transaction_explorer_path, params: { entity_ids: [ @gci.id ] }
 
     assert_response :success
-    assert_select "fieldset[data-category-catalog='JPW']", count: 0
+    assert_select "fieldset[data-category-catalog='JPW'][hidden]", count: 1
+    assert_select "fieldset[data-category-catalog='JPW']:not([hidden])", count: 0
     assert_select "fieldset[data-category-catalog='GCI']", count: 1
   end
 
@@ -339,7 +418,9 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     )
     select_profile("Green Capital Investing")
 
-    get myfin_transaction_explorer_path
+    get myfin_transaction_explorer_path, params: {
+      entity_ids: [ @gci.id ], years: [ 2026 ], months: [ 8 ]
+    }
 
     assert_response :success
     assert_equal "CGI", tabulator_row(entry).fetch("entity")
@@ -368,7 +449,9 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     )
     select_profile("Everything")
 
-    get myfin_transaction_explorer_path
+    get myfin_transaction_explorer_path, params: {
+      entity_ids: [ @personal.id, donna.id ], years: [ 2026 ], months: [ 8 ]
+    }
 
     assert_response :success
     assert_equal "Shared display Shopping", tabulator_row(jpw_entry).fetch("detail_category")
@@ -397,12 +480,13 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     )
     select_profile("WDG Report")
 
-    get myfin_transaction_explorer_path
+    get myfin_transaction_explorer_path, params: {
+      entity_ids: [ @personal.id, @gci.id ], years: [ 2026 ], months: [ 8 ]
+    }
 
     assert_response :success
     assert tabulator_row(personal_entry)
     assert tabulator_row(gci_entry)
-    assert_select "input[name='wdg_rollup_ids[]']", minimum: 1
   end
 
   test "renders scoped history for editable rows and recent changes in the drawer" do

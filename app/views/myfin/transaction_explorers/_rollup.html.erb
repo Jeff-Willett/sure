@@ -6,7 +6,7 @@
     <span class="text-xs text-secondary"><%= t("myfin.transaction_explorer.rollup_help") %></span>
   </header>
 
-  <div class="space-y-5 p-3">
+  <div class="space-y-5 p-3" data-transaction-explorer-tabulator-target="rollupContent">
     <% if rollup.empty? %>
       <p class="py-8 text-center text-sm text-secondary"><%= t("myfin.transaction_explorer.empty") %></p>
     <% end %>
@@ -32,12 +32,23 @@
                    { entity_ids: [ group.entity_id ] }
                  end %>
               <%= link_to myfin_transaction_explorer_path(request.query_parameters.merge(group_filter)),
+                    data: {
+                      action: "transaction-explorer-tabulator#drillDown",
+                      explorer_filter_key: group_filter.keys.first,
+                      explorer_filter_value: group_filter.values.first.first
+                    },
                     class: "flex items-start justify-between gap-3 rounded-md px-2.5 py-2 text-sm font-medium text-primary transition-colors hover:bg-container-inset motion-reduce:transition-none" do %>
                 <span><%= group.wdg %></span>
                 <span class="tabular-nums"><%= format_money(Money.new(group.amount.abs, Current.family.currency)) %></span>
               <% end %>
               <% group.categories.each do |category| %>
-                <%= link_to myfin_transaction_explorer_path(request.query_parameters.merge(detail_category_ids: [ category.detail_category_id ])),
+                <% category_filter_id = category.detail_category_id || "__uncategorized__" %>
+                <%= link_to myfin_transaction_explorer_path(request.query_parameters.merge(detail_category_ids: [ category_filter_id ])),
+                      data: {
+                        action: "transaction-explorer-tabulator#drillDown",
+                        explorer_filter_key: "detail_category_ids",
+                        explorer_filter_value: category_filter_id
+                      },
                       class: "flex items-start justify-between gap-3 rounded-md px-3 py-1.5 text-xs text-secondary transition-colors hover:bg-surface-hover hover:text-primary motion-reduce:transition-none" do %>
                   <span class="inline-flex min-w-0 items-center gap-1.5">
                     <span class="w-5 shrink-0 text-center text-sm leading-none" aria-hidden="true"><%= transaction_explorer_rollup_emoji(category.jpw) %></span>

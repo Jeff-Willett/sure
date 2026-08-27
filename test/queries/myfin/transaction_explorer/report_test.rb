@@ -167,6 +167,32 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     assert_includes report.rows.map(&:entry_id), donna_entry.id
   end
 
+  test "filters explicitly to uncategorized rows" do
+    uncategorized = create_entry(
+      entity_amounts: { @personal => 40 },
+      date: Date.new(2026, 8, 7),
+      name: "Explicit uncategorized row",
+      amount: 40
+    )
+    create_entity_entry(
+      entity: @personal,
+      scheme: @jpw_scheme,
+      category: @jpw_scheme.scheme_categories.create!(name: "Explicit categorized row"),
+      amount: 30
+    )
+
+    report = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @everything_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params(
+        detail_category_ids: [ "__uncategorized__" ]
+      )
+    )
+
+    assert_equal [ uncategorized.id ], report.rows.map(&:entry_id)
+    assert_equal [ "__uncategorized__" ], report.selected_filters[:detail_category_ids]
+  end
+
   test "loads entries once and preserves selected allocation amounts" do
     personal_entry = create_entry(
       entity_amounts: { @personal => 40 },
@@ -188,6 +214,13 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
 
     assert_equal [ personal_entry.id, shared_entry.id ], report.rows.map(&:entry_id)
     assert_equal(-60.to_d, report.rows.find { |row| row.entry_id == shared_entry.id }.amount)
+    assert_equal(
+      {
+        @personal.id => -60.to_d,
+        @gci.id => -40.to_d
+      },
+      report.working_rows.find { |row| row.entry_id == shared_entry.id }.entity_amounts
+    )
     assert_equal 2, report.metrics.transactions
     assert_equal report.rows.sum(&:amount), report.rollup.sum(&:amount)
 
@@ -568,6 +601,32 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
 
     account_share_loads = queries.count { |sql| sql.match?(/SELECT "account_shares"\.\* FROM "account_shares"/) }
     assert_equal 1, account_share_loads
+  end
+
+  test "keeps explicitly filtered report queries within budget" do
+    4.times do |index|
+      create_entity_entry(
+        entity: @personal,
+        scheme: @jpw_scheme,
+        category: @jpw_scheme.scheme_categories.create!(name: "Query budget category #{index}"),
+        amount: index + 10
+      )
+    end
+
+    ActiveRecord::Base.connection.clear_query_cache
+    queries = capture_sql_queries do
+      Myfin::TransactionExplorer::Report.call(
+        user: @user,
+        profile: @everything_profile,
+        filters: Myfin::TransactionExplorer::Filters.from_params(entity_ids: [ @personal.id ])
+      )
+    end
+
+    per_row_scheme_queries = queries.grep(
+      /FROM "myfin_category_schemes" WHERE .*"entity_id".*"is_default".*LIMIT/
+    )
+    assert_empty per_row_scheme_queries
+    assert_operator queries.size, :<=, 35
   end
 
   private
