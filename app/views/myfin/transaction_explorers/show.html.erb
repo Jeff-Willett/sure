@@ -6,23 +6,37 @@
 
 <%= turbo_frame_tag "transaction-explorer-workspace",
       class: "myfin-tabulator-shell @container flex min-h-0 flex-1 flex-col lg:-mx-10",
-      data: { turbo_action: "replace" } do %>
+      data: {
+        controller: "transaction-explorer-tabulator",
+        transaction_explorer_tabulator_persistence_id_value: "myfin-transaction-explorer-v3",
+        transaction_explorer_tabulator_create_tag_url_value: tags_path(format: :json),
+        transaction_explorer_tabulator_currency_value: Current.family.currency,
+        transaction_explorer_tabulator_subunit_value: Money::Currency.new(Current.family.currency).minor_unit_conversion,
+        transaction_explorer_tabulator_rollup_mode_value: @report.rollup_mode,
+        transaction_explorer_tabulator_working_data_url_value: data_myfin_transaction_explorer_path(format: :json),
+        transaction_explorer_tabulator_filter_storage_key_value: "myfin-transaction-explorer-filters",
+        transaction_explorer_tabulator_default_filters_value: @default_filters.to_json,
+        transaction_explorer_tabulator_excluded_tags_template_value: t("myfin.transaction_explorer.excluding_tags", tags: "__TAGS__"),
+        transaction_explorer_tabulator_empty_message_value: t("myfin.transaction_explorer.empty"),
+        transaction_explorer_tabulator_uncategorized_label_value: t("myfin.transaction_explorer.category_uncategorized"),
+        transaction_explorer_tabulator_showing_template_value: t("myfin.transaction_explorer.showing", shown: "__SHOWN__", total: "__TOTAL__")
+      } do %>
   <h1 class="sr-only"><%= t("myfin.transaction_explorer.title") %></h1>
 
   <div id="transaction-explorer-filters">
     <%= render "filters", report: @report %>
   </div>
 
-  <% if @report.excluded_tag_names.any? %>
-    <div
-      class="border-b border-secondary bg-warning/10 px-4 py-2 text-xs text-primary"
-      data-testid="transaction-explorer-active-exclusions">
-      <%= t(
-        "myfin.transaction_explorer.excluding_tags",
-        tags: @report.excluded_tag_names.to_sentence
-      ) %>
-    </div>
-  <% end %>
+  <div
+    <%= "hidden" if @report.excluded_tag_names.empty? %>
+    class="border-b border-secondary bg-warning/10 px-4 py-2 text-xs text-primary"
+    data-testid="transaction-explorer-active-exclusions"
+    data-transaction-explorer-tabulator-target="exclusionBanner">
+    <%= t(
+      "myfin.transaction_explorer.excluding_tags",
+      tags: @report.excluded_tag_names.to_sentence
+    ) %>
+  </div>
 
   <%= render "tabulator_grid",
         rows: @report.rows,

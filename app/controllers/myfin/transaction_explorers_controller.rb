@@ -1,18 +1,32 @@
 module Myfin
   class TransactionExplorersController < ApplicationController
     MAX_VISIBLE_ROWS = 250
+    MAX_WORKING_ROWS = 10_000
     FILTER_KEYS = %w[
       entity_ids years months types detail_category_ids wdg_rollup_ids
       include_tag_ids exclude_tag_ids search
     ].freeze
 
     def show
+      response.headers["Cache-Control"] = "no-store"
       @report = self.class.report_for(user: Current.user, params: params)
+      @default_filters = self.class.default_filters_for(user: Current.user, report: @report)
       @visible_rows = @report.rows.first(MAX_VISIBLE_ROWS)
       @breadcrumbs = [
         [ t("breadcrumbs.home"), root_path ],
         [ t("myfin.transaction_explorer.title"), nil ]
       ]
+    end
+
+    def data
+      report = self.class.report_for(user: Current.user, params: params)
+      response.headers["Cache-Control"] = "no-store"
+      fallback = report.working_rows.size > MAX_WORKING_ROWS
+      render json: {
+        rows: fallback ? [] : view_context.transaction_explorer_tabulator_rows(report.working_rows),
+        fallback: fallback,
+        total_count: report.working_rows.size
+      }
     end
 
     def self.report_for(user:, params:)
@@ -31,6 +45,21 @@ module Myfin
       }
       defaults[:entity_ids] = [ personal_entity.id ] if personal_entity
       params.merge(defaults)
+    end
+
+    def self.default_filters_for(user:, report:)
+      personal_entity = user.family.myfin_entities.active.find_by(name: "JPW Personal")
+      available_entity_ids = report.filter_options.entities.map { |id, _name| id.to_s }
+      {
+        entity_ids: personal_entity ? [ personal_entity.id.to_s ] : available_entity_ids,
+        years: [ Date.current.year.to_s ],
+        months: [ Date.current.month.to_s ],
+        types: report.filter_options.types.map(&:to_s),
+        wdg_rollup_ids: [],
+        include_tag_ids: [],
+        exclude_tag_ids: [],
+        search: ""
+      }
     end
 
     def self.filter_params(params)

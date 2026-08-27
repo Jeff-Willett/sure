@@ -4,17 +4,15 @@
 <% selected_filters = report.selected_filters %>
 <% available_detail_ids = report.category_availability[:detail_category_ids].map(&:to_s).to_set %>
 <% available_tag_ids = report.category_availability[:tag_ids].map(&:to_s).to_set %>
-<% jpw_categories = filter_options.detail_categories.select { |id, scheme, _name| scheme == "JPW" && available_detail_ids.include?(id.to_s) } %>
-<% gci_categories = filter_options.detail_categories.select { |id, scheme, _name| scheme == "GCI" && available_detail_ids.include?(id.to_s) } %>
-<% visible_tags = filter_options.tags.select { |id, _name| available_tag_ids.include?(id.to_s) } %>
+<% jpw_categories = filter_options.detail_categories.select { |_id, scheme, _name| scheme == "JPW" } %>
+<% gci_categories = filter_options.detail_categories.select { |_id, scheme, _name| scheme == "GCI" } %>
+<% visible_tags = filter_options.tags %>
 
 <%= form_with url: myfin_transaction_explorer_path,
       method: :get,
       data: {
-        controller: "auto-submit-form",
-        auto_submit_form_persistence_key_value: "myfin-transaction-explorer-filters",
-        turbo_frame: "transaction-explorer-workspace",
-        turbo_action: "replace"
+        transaction_explorer_tabulator_target: "form",
+        action: "submit->transaction-explorer-tabulator#filterSubmitted change->transaction-explorer-tabulator#filterChanged input->transaction-explorer-tabulator#searchChanged explorer-slicer-change->transaction-explorer-tabulator#slicerChanged"
       },
       class: "border-y border-secondary bg-container" do %>
   <div data-testid="transaction-explorer-primary-filters" class="flex items-center gap-px overflow-x-auto bg-secondary">
@@ -57,12 +55,11 @@
             value: params[:search],
             placeholder: t("myfin.transaction_explorer.filters.search"),
             aria_label: t("myfin.transaction_explorer.filters.search"),
-            class: "min-w-0 flex-1",
-            data: { auto_submit_form_target: "auto" }
+            class: "min-w-0 flex-1"
           ) %>
       <%= link_to t("myfin.transaction_explorer.filters.reset"),
             myfin_transaction_explorer_path,
-            data: { action: "auto-submit-form#clearRememberedFilters", turbo_frame: "transaction-explorer-workspace" },
+            data: { action: "transaction-explorer-tabulator#resetFilters" },
             class: "shrink-0 rounded-md px-1.5 py-1 text-xs font-medium text-secondary transition-colors hover:bg-surface-hover hover:text-primary focus-ring motion-reduce:transition-none" %>
     </div>
   </div>
@@ -88,6 +85,7 @@
               selected: selected_filters[:detail_category_ids],
               available: report.category_availability[:detail_category_ids],
               explicit: params.key?(:detail_category_ids),
+              hidden: jpw_categories.none? { |id, _scheme, _name| available_detail_ids.include?(id.to_s) },
               inline: true,
               compact: true,
               catalog: "JPW" %>
@@ -100,6 +98,7 @@
               selected: selected_filters[:detail_category_ids],
               available: report.category_availability[:detail_category_ids],
               explicit: params.key?(:detail_category_ids),
+              hidden: gci_categories.none? { |id, _scheme, _name| available_detail_ids.include?(id.to_s) },
               inline: true,
               compact: true,
               catalog: "GCI" %>

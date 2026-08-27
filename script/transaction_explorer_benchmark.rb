@@ -7,6 +7,7 @@ samples = []
 query_counts = []
 
 runs.times do
+  ActiveRecord::Base.connection.clear_query_cache
   query_count = 0
   callback = lambda do |_name, _started, _finished, _unique_id, payload|
     next if payload[:cached]

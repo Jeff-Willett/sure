@@ -18,6 +18,8 @@ pin "utils/transaction_explorer_grid_state", to: "utils/transaction_explorer_gri
 pin "utils/transaction_explorer_spreadsheet", to: "utils/transaction_explorer_spreadsheet.mjs"
 pin "utils/transaction_explorer_undo", to: "utils/transaction_explorer_undo.mjs"
 pin "utils/transaction_explorer_view_state", to: "utils/transaction_explorer_view_state.mjs"
+pin "utils/transaction_explorer_history", to: "utils/transaction_explorer_history.mjs"
+pin "utils/transaction_explorer_report", to: "utils/transaction_explorer_report.mjs"
 pin "@github/hotkey", to: "@github--hotkey.js" # @3.1.1
 pin "@simonwep/pickr", to: "@simonwep--pickr.js" # @1.9.1
 

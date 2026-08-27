@@ -188,6 +188,13 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
 
     assert_equal [ personal_entry.id, shared_entry.id ], report.rows.map(&:entry_id)
     assert_equal(-60.to_d, report.rows.find { |row| row.entry_id == shared_entry.id }.amount)
+    assert_equal(
+      {
+        @personal.id => -60.to_d,
+        @gci.id => -40.to_d
+      },
+      report.working_rows.find { |row| row.entry_id == shared_entry.id }.entity_amounts
+    )
     assert_equal 2, report.metrics.transactions
     assert_equal report.rows.sum(&:amount), report.rollup.sum(&:amount)
 

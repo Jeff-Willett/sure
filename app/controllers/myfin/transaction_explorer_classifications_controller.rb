@@ -3,7 +3,7 @@ module Myfin
     class InvalidClassification < StandardError; end
 
     def update
-      return head :not_acceptable unless request.format.turbo_stream?
+      return head :not_acceptable unless request.format.turbo_stream? || request.format.json?
 
       entry = Current.accessible_entries.transactions.find_by!(id: params[:entry_id])
       return unless require_account_permission!(entry.account, :annotate)
@@ -28,6 +28,16 @@ module Myfin
       @scheme_name = scheme.name
       @focus_fallback_entry_id = @report.rows.find { |row| row.entry_id == entry.id }&.entry_id || @report.rows.first&.entry_id
       flash.now[:notice] = t("myfin.transaction_classifications.updated")
+
+      respond_to do |format|
+        format.turbo_stream
+        format.json do
+          updated_row = @report.working_rows.find { |row| row.entry_id == entry.id }
+          render json: {
+            row: view_context.transaction_explorer_tabulator_rows([ updated_row ]).first
+          }
+        end
+      end
     rescue ClassificationEditor::StaleClassification
       head :conflict
     rescue ClassificationEditor::NotAuthorized

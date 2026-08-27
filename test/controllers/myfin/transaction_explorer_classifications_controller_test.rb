@@ -36,6 +36,24 @@ class Myfin::TransactionExplorerClassificationsControllerTest < ActionDispatch::
     assert_select "turbo-stream[target='transaction-explorer-shared-set'] template [data-ledger-count='0'][data-rollup-count='0']"
   end
 
+  test "returns the authoritative updated row as JSON" do
+    entry = create_entry(jpw: @old_category.name)
+
+    patch myfin_entry_transaction_explorer_classification_path(entry), params: explorer_params(
+      entry: entry,
+      category_id: @new_category.id,
+      expected_category_id: @old_category.id
+    ), as: :json
+
+    assert_response :success
+    row = response.parsed_body.fetch("row")
+    assert_equal entry.id, row.fetch("id")
+    assert_equal @new_category.id, row.fetch("detail_category_id")
+    assert_equal @new_category.name, row.fetch("detail_category")
+    assert_equal @jpw_scheme.id, row.fetch("scheme_id")
+    assert_equal "transaction_explorer", Myfin::ClassificationChange.order(:created_at).last.source
+  end
+
   test "sets a classification to uncategorized when category_id is blank" do
     entry = create_entry(jpw: @old_category.name)
 
@@ -106,22 +124,18 @@ class Myfin::TransactionExplorerClassificationsControllerTest < ActionDispatch::
     assert_response :unprocessable_entity
   end
 
-  test "renders every target used by the classification update response" do
+  test "renders every target used by the in-memory explorer" do
     ensure_tailwind_build
 
     get myfin_transaction_explorer_path
 
     assert_response :success
-    %w[
-      transaction-explorer-shared-set
-      transaction-explorer-metrics
-      transaction-explorer-rollup
-      transaction-explorer-ledger
-      transaction-explorer-filters
-      transaction-explorer-edit-result
-    ].each do |target|
-      assert_select "##{target}", count: 1
-    end
+    assert_select "turbo-frame#transaction-explorer-workspace[data-controller='transaction-explorer-tabulator']", count: 1
+    assert_select "#transaction-explorer-filters", count: 1
+    assert_select "[data-transaction-explorer-tabulator-target='form']", count: 1
+    assert_select "[data-transaction-explorer-tabulator-target='count']", count: 1
+    assert_select "[data-transaction-explorer-tabulator-target='grid']", count: 1
+    assert_select "[data-transaction-explorer-tabulator-target='rollupContent']", count: 1
   end
 
   private

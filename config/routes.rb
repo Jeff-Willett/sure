@@ -6,7 +6,9 @@ Rails.application.routes.draw do
 
   namespace :myfin do
     resource :reporting_profile, only: :update
-    resource :transaction_explorer, only: :show
+    resource :transaction_explorer, only: :show do
+      get :data
+    end
     resource :transaction_explorer_classification_batch, only: :update
     resources :entries, only: [] do
       resource :allocation, only: :update, controller: :entry_allocations

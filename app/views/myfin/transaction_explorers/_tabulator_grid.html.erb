@@ -1,14 +1,11 @@
 <%# locals: (rows:, total_count:, category_options:, tag_options:, rollup:, rollup_mode:) %>
 
 <section
-  class="flex min-h-0 flex-1 flex-col bg-container"
-  data-controller="transaction-explorer-tabulator"
-  data-transaction-explorer-tabulator-persistence-id-value="myfin-transaction-explorer-v3"
-  data-transaction-explorer-tabulator-create-tag-url-value="<%= tags_path(format: :json) %>">
+  class="flex min-h-0 flex-1 flex-col bg-container">
   <header class="flex min-h-11 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-secondary px-3 py-2">
     <div class="flex items-center gap-2">
       <h2 class="text-sm font-semibold text-primary"><%= t("myfin.transaction_explorer.ledger_title") %></h2>
-      <span class="text-xs text-secondary"><%= t("myfin.transaction_explorer.showing", shown: rows.size, total: total_count) %></span>
+      <span class="text-xs text-secondary" data-transaction-explorer-tabulator-target="count"><%= t("myfin.transaction_explorer.showing", shown: rows.size, total: total_count) %></span>
     </div>
 
     <div class="flex flex-wrap items-center gap-1.5">

@@ -16,3 +16,18 @@ test("Tabulator controller imports view state through the import map", async () 
     /from ["']\.\.\/utils\/transaction_explorer_view_state\.mjs["']/,
   );
 });
+
+test("Tabulator readiness does not depend on visible rows", async () => {
+  const source = await readFile(controllerUrl, "utf8");
+
+  assert.match(source, /this\.tableStateRestored = false/);
+  assert.doesNotMatch(source, /table\.getRows\(\)\.length === 0/);
+});
+
+test("working-set callbacks are scoped to the active connection", async () => {
+  const source = await readFile(controllerUrl, "utf8");
+
+  assert.match(source, /Symbol\("transaction-explorer-load"\)/);
+  assert.match(source, /this\.loadToken !== loadToken/);
+  assert.match(source, /this\.workingDataAbortController\.abort\(\)/);
+});
