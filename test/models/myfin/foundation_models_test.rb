@@ -92,4 +92,63 @@ class MyfinFoundationModelsTest < ActiveSupport::TestCase
     assert_not membership.valid?
     assert_includes membership.errors[:entity], "must belong to the reporting profile family"
   end
+
+  test "one JPW category has at most one WDG target" do
+    family = families(:dylan_family)
+    source = scheme_category(family:, scheme_name: "JPW", category_name: "Restaurants")
+    first_target = scheme_category(family:, scheme_name: "WDG", category_name: "Shopping")
+    second_target = scheme_category(family:, scheme_name: "WDG", category_name: "Other Living Expenses")
+
+    Myfin::CategoryRollupMapping.create!(
+      source_category: source,
+      target_category: first_target
+    )
+    duplicate = Myfin::CategoryRollupMapping.new(
+      source_category: source,
+      target_category: second_target
+    )
+
+    assert_not duplicate.valid?
+    assert_includes duplicate.errors[:source_category_id], "has already been taken"
+  end
+
+  test "DIS and GCI categories cannot map to WDG" do
+    family = families(:dylan_family)
+    wdg = scheme_category(family:, scheme_name: "WDG", category_name: "Shopping")
+
+    %w[DIS GCI].each do |scheme_name|
+      mapping = Myfin::CategoryRollupMapping.new(
+        source_category: scheme_category(family:, scheme_name:, category_name: "Shopping"),
+        target_category: wdg
+      )
+
+      assert_not mapping.valid?
+      assert_includes mapping.errors[:source_category], "must belong to the JPW scheme"
+    end
+  end
+
+  test "a rollup target must be a WDG category in the same family" do
+    family = families(:dylan_family)
+    source = scheme_category(family:, scheme_name: "JPW", category_name: "Restaurants")
+    wrong_scheme = scheme_category(family:, scheme_name: "GCI", category_name: "Office Expense")
+    other_family_target = scheme_category(
+      family: families(:empty),
+      scheme_name: "WDG",
+      category_name: "Shopping"
+    )
+
+    wrong_target = Myfin::CategoryRollupMapping.new(source_category: source, target_category: wrong_scheme)
+    cross_family = Myfin::CategoryRollupMapping.new(source_category: source, target_category: other_family_target)
+
+    assert_not wrong_target.valid?
+    assert_includes wrong_target.errors[:target_category], "must belong to the WDG scheme"
+    assert_not cross_family.valid?
+    assert_includes cross_family.errors[:target_category], "must belong to the source category family"
+  end
+
+  private
+    def scheme_category(family:, scheme_name:, category_name:)
+      scheme = family.myfin_category_schemes.find_or_create_by!(name: scheme_name)
+      scheme.scheme_categories.find_or_create_by!(name: category_name)
+    end
 end

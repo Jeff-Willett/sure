@@ -340,7 +340,7 @@ for i in {1..180}; do
       emit_status demo-data-load "creating/backfilling demo dataset in background (seed=${DEMO_SEED})"
       (
         (
-          DEMO_USER_EMAIL="$DEMO_EMAIL" DEMO_DATA_SEED="$DEMO_SEED" /rails/bin/rails runner '
+          MYFIN_PREVIEW_SAMPLE_DATA=1 DEMO_USER_EMAIL="$DEMO_EMAIL" DEMO_DATA_SEED="$DEMO_SEED" /rails/bin/rails runner '
             email = ENV.fetch("DEMO_USER_EMAIL")
             generator = Demo::Generator.new(seed: ENV.fetch("DEMO_DATA_SEED"))
             user = User.find_by(email: email)
@@ -352,6 +352,7 @@ for i in {1..180}; do
 
             has_accounts = user.family.accounts.exists?
             generator.generate_new_user_data_for!(user.family, email: user.email) unless has_accounts
+            Myfin::PreviewDataset.call(family: user.family)
           '
         ) > /tmp/demo-data.log 2>&1 && \
           emit_status demo-data-ready "default demo dataset loaded in background" || \

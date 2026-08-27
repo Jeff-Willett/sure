@@ -4,9 +4,11 @@ import { Controller } from "@hotwired/stimulus";
 // Auto-opens a <details> element based on URL param
 // Use data-auto-open-param-value="paramName" to open when ?paramName=1 is in URL
 export default class extends Controller {
-  static values = { param: String };
+  static values = { param: String, storageKey: String };
 
   connect() {
+    this.restoreStoredState();
+
     if (!this.hasParamValue || !this.paramValue) return;
 
     const params = new URLSearchParams(window.location.search);
@@ -24,6 +26,27 @@ export default class extends Controller {
       requestAnimationFrame(() => {
         this.element.scrollIntoView({ behavior: "smooth", block: "start" });
       });
+    }
+  }
+
+  remember() {
+    if (!this.hasStorageKeyValue) return;
+
+    try {
+      localStorage.setItem(this.storageKeyValue, String(this.element.open));
+    } catch (_error) {
+      // The disclosure still works when browser storage is unavailable.
+    }
+  }
+
+  restoreStoredState() {
+    if (!this.hasStorageKeyValue) return;
+
+    try {
+      const savedState = localStorage.getItem(this.storageKeyValue);
+      if (savedState !== null) this.element.open = savedState === "true";
+    } catch (_error) {
+      // The disclosure still works when browser storage is unavailable.
     }
   }
 }

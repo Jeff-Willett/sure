@@ -6,13 +6,20 @@ class MyfinClassificationEditorTest < ActiveSupport::TestCase
     @transaction = @entry.transaction
     @family = @entry.account.family
     @user = users(:family_admin)
-    @jpw_scheme = Myfin::CategoryScheme.create!(family: @family, name: "JPW")
-    @wdg_scheme = Myfin::CategoryScheme.create!(family: @family, name: "WDG")
+    Myfin::BootstrapFamily.call(family: @family)
+    @personal = @family.myfin_entities.find_by!(name: "JPW Personal")
+    @jpw_scheme = @family.myfin_category_schemes.find_by!(name: "JPW")
+    @dis_scheme = @family.myfin_category_schemes.find_by!(name: "DIS")
+    @wdg_scheme = @family.myfin_category_schemes.find_by!(name: "WDG")
     @old_jpw = Myfin::SchemeCategory.create!(category_scheme: @jpw_scheme, name: "Dining")
     @new_jpw = Myfin::SchemeCategory.create!(category_scheme: @jpw_scheme, name: "Coffee")
+    @dis_category = Myfin::SchemeCategory.create!(category_scheme: @dis_scheme, name: "Dining")
     @old_wdg = Myfin::SchemeCategory.create!(category_scheme: @wdg_scheme, name: "Food")
     @wdg_category = Myfin::SchemeCategory.create!(category_scheme: @wdg_scheme, name: "Restaurants")
 
+    Myfin::EntryAllocation.replace_for!(@entry, [
+      Myfin::EntryAllocation.new(entity: @personal, amount: @entry.amount, allocation_source: "manual")
+    ])
     create_classification(@jpw_scheme, @old_jpw)
     create_classification(@wdg_scheme, @old_wdg)
   end
@@ -51,36 +58,39 @@ class MyfinClassificationEditorTest < ActiveSupport::TestCase
     assert_equal @old_wdg, classification_for(@wdg_scheme).scheme_category
   end
 
-  test "mirrors a WDG edit to the native family category" do
-    result = call_editor(
-      scheme: @wdg_scheme,
-      target_category: @wdg_category,
-      expected_category: @old_wdg
+  test "rejects direct WDG edits and leaves the native category unchanged" do
+    native_category = @family.categories.create!(
+      name: "Existing native category",
+      color: "#e99537",
+      lucide_icon: "tag"
     )
+    @transaction.update!(category: native_category)
 
-    assert_equal @wdg_category, result.classification.reload.scheme_category
-    assert_equal @wdg_category.name, @transaction.reload.category.name
-    assert_equal @family, @transaction.category.family
+    assert_no_difference -> { Myfin::ClassificationChange.count } do
+      assert_raises Myfin::ClassificationEditor::InvalidCategory do
+        call_editor(
+          scheme: @wdg_scheme,
+          target_category: @wdg_category,
+          expected_category: @old_wdg
+        )
+      end
+    end
+
+    assert_equal @old_wdg, classification_for(@wdg_scheme).scheme_category
+    assert_equal native_category, @transaction.reload.category
   end
 
-  test "clears the native WDG category when WDG is uncategorized" do
-    call_editor(
-      scheme: @wdg_scheme,
-      target_category: @wdg_category,
-      expected_category: @old_wdg
-    )
+  test "rejects a category from another entity catalog" do
+    assert_no_difference -> { Myfin::ClassificationChange.count } do
+      assert_raises Myfin::ClassificationEditor::InvalidCategory do
+        call_editor(
+          scheme: @dis_scheme,
+          target_category: @dis_category,
+          expected_category: nil
+        )
+      end
+    end
 
-    result = call_editor(
-      scheme: @wdg_scheme,
-      target_category: nil,
-      expected_category: @wdg_category
-    )
-
-    assert_nil result.classification
-    assert_nil classification_for(@wdg_scheme)
-    assert_equal [ @wdg_category.name, nil ],
-      [ result.change.previous_category_name, result.change.new_category_name ]
-    assert_nil @transaction.reload.category
     assert_equal @old_jpw, classification_for(@jpw_scheme).scheme_category
   end
 
@@ -136,26 +146,6 @@ class MyfinClassificationEditorTest < ActiveSupport::TestCase
         end
       end
     end
-  end
-
-  test "rolls back the classification and audit when WDG mirroring fails" do
-    Myfin::ClassificationEditor.any_instance
-      .stubs(:mirror_wdg_to_sure!)
-      .raises(StandardError, "native mirror failed")
-
-    assert_no_difference -> { Myfin::TransactionClassification.count } do
-      assert_no_difference -> { Myfin::ClassificationChange.count } do
-        assert_raises StandardError do
-          call_editor(
-            scheme: @wdg_scheme,
-            target_category: @wdg_category,
-            expected_category: @old_wdg
-          )
-        end
-      end
-    end
-
-    assert_equal @old_wdg, classification_for(@wdg_scheme).scheme_category
   end
 
   test "reverts the latest change through the same editor" do

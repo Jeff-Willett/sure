@@ -17,11 +17,11 @@
 <% end %>
 
 <%= turbo_stream.replace "transaction-explorer-rollup" do %>
-  <div id="transaction-explorer-rollup"><%= render "myfin/transaction_explorers/rollup", rollup: @report.rollup %></div>
+  <div id="transaction-explorer-rollup"><%= render "myfin/transaction_explorers/rollup", rollup: @report.rollup, rollup_mode: @report.rollup_mode %></div>
 <% end %>
 
 <%= turbo_stream.replace "transaction-explorer-ledger" do %>
-  <div id="transaction-explorer-ledger"><%= render "myfin/transaction_explorers/ledger", rows: @visible_rows, total_count: @report.rows.size, category_options: @report.category_options %></div>
+  <div id="transaction-explorer-ledger"><%= render "myfin/transaction_explorers/ledger", rows: @visible_rows, total_count: @report.rows.size, category_options: @report.category_options, tag_options: @report.tag_options, report: @report %></div>
 <% end %>
 
 <%= turbo_stream.replace "transaction-explorer-filters" do %>

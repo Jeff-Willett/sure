@@ -6,25 +6,25 @@ class Myfin::TransactionExplorerClassificationsControllerTest < ActionDispatch::
     @family = @user.family
     Myfin::BootstrapFamily.call(family: @family)
     @personal = @family.myfin_entities.find_by!(name: "JPW Personal")
-    @wdg_scheme = @family.myfin_category_schemes.find_by!(name: "WDG")
-    @old_category = @wdg_scheme.scheme_categories.create!(name: "Explorer original WDG category")
-    @new_category = @wdg_scheme.scheme_categories.create!(name: "Explorer updated WDG category")
-    @stale_category = @wdg_scheme.scheme_categories.create!(name: "Explorer stale WDG category")
+    @jpw_scheme = @family.myfin_category_schemes.find_by!(name: "JPW")
+    @old_category = @jpw_scheme.scheme_categories.create!(name: "Explorer original JPW category")
+    @new_category = @jpw_scheme.scheme_categories.create!(name: "Explorer updated JPW category")
+    @stale_category = @jpw_scheme.scheme_categories.create!(name: "Explorer stale JPW category")
     sign_in @user
   end
 
   test "updates a classification and refreshes the filtered explorer once as Turbo streams" do
-    entry = create_entry(wdg: @old_category.name)
+    entry = create_entry(jpw: @old_category.name)
 
     patch myfin_entry_transaction_explorer_classification_path(entry), params: explorer_params(
       entry: entry,
       category_id: @new_category.id,
       expected_category_id: @old_category.id,
-      wdg_categories: [ @old_category.name ]
+      jpw_categories: [ @old_category.name ]
     ), as: :turbo_stream
 
     assert_response :success
-    assert_equal @new_category, entry.transaction.myfin_classifications.reload.find_by!(category_scheme: @wdg_scheme).scheme_category
+    assert_equal @new_category, entry.transaction.myfin_classifications.reload.find_by!(category_scheme: @jpw_scheme).scheme_category
     assert_equal "transaction_explorer", Myfin::ClassificationChange.order(:created_at).last.source
     assert_select "turbo-stream[action='replace'][target='transaction-explorer-shared-set']"
     assert_select "turbo-stream[action='replace'][target='transaction-explorer-metrics']"
@@ -32,12 +32,12 @@ class Myfin::TransactionExplorerClassificationsControllerTest < ActionDispatch::
     assert_select "turbo-stream[action='replace'][target='transaction-explorer-ledger']"
     assert_select "turbo-stream[action='replace'][target='transaction-explorer-filters']"
     assert_select "turbo-stream[action='append'][target='notification-tray']"
-    assert_select "turbo-stream[action='update'][target='transaction-explorer-edit-result'] template [data-entry-id='#{entry.id}'][data-scheme='WDG'][data-focus-fallback]"
+    assert_select "turbo-stream[action='update'][target='transaction-explorer-edit-result'] template [data-entry-id='#{entry.id}'][data-scheme='JPW'][data-focus-fallback]"
     assert_select "turbo-stream[target='transaction-explorer-shared-set'] template [data-ledger-count='0'][data-rollup-count='0']"
   end
 
   test "sets a classification to uncategorized when category_id is blank" do
-    entry = create_entry(wdg: @old_category.name)
+    entry = create_entry(jpw: @old_category.name)
 
     patch myfin_entry_transaction_explorer_classification_path(entry), params: explorer_params(
       entry: entry,
@@ -46,7 +46,7 @@ class Myfin::TransactionExplorerClassificationsControllerTest < ActionDispatch::
     ), as: :turbo_stream
 
     assert_response :success
-    assert_nil entry.transaction.myfin_classifications.reload.find_by(category_scheme: @wdg_scheme)
+    assert_nil entry.transaction.myfin_classifications.reload.find_by(category_scheme: @jpw_scheme)
     assert_nil Myfin::ClassificationChange.order(:created_at).last.new_category
   end
 
@@ -69,7 +69,7 @@ class Myfin::TransactionExplorerClassificationsControllerTest < ActionDispatch::
   end
 
   test "returns conflict when the expected category is stale" do
-    entry = create_entry(wdg: @old_category.name)
+    entry = create_entry(jpw: @old_category.name)
 
     assert_no_difference -> { Myfin::ClassificationChange.count } do
       patch myfin_entry_transaction_explorer_classification_path(entry), params: explorer_params(
@@ -80,12 +80,12 @@ class Myfin::TransactionExplorerClassificationsControllerTest < ActionDispatch::
     end
 
     assert_response :conflict
-    assert_equal @old_category, entry.transaction.myfin_classifications.reload.find_by!(category_scheme: @wdg_scheme).scheme_category
+    assert_equal @old_category, entry.transaction.myfin_classifications.reload.find_by!(category_scheme: @jpw_scheme).scheme_category
   end
 
   test "returns unprocessable entity for an inactive or out-of-family category" do
-    entry = create_entry(wdg: @old_category.name)
-    inactive_category = @wdg_scheme.scheme_categories.create!(name: "Inactive controller category", active: false)
+    entry = create_entry(jpw: @old_category.name)
+    inactive_category = @jpw_scheme.scheme_categories.create!(name: "Inactive controller category", active: false)
     other_scheme = Myfin::CategoryScheme.create!(family: families(:empty), name: "Outside family WDG")
 
     patch myfin_entry_transaction_explorer_classification_path(entry), params: explorer_params(
@@ -125,7 +125,7 @@ class Myfin::TransactionExplorerClassificationsControllerTest < ActionDispatch::
   end
 
   private
-    def create_entry(wdg:)
+    def create_entry(jpw:)
       entry = accounts(:depository).entries.create!(
         entryable: Transaction.new,
         date: Date.new(2026, 8, 5),
@@ -138,12 +138,12 @@ class Myfin::TransactionExplorerClassificationsControllerTest < ActionDispatch::
       ])
       Myfin::Imports::ClassificationWriter.call(
         sure_transaction: entry.transaction,
-        classifications: { "WDG" => wdg }
+        classifications: { "JPW" => jpw }
       )
       entry
     end
 
-    def explorer_params(entry:, category_id:, expected_category_id:, scheme_id: @wdg_scheme.id, **filters)
+    def explorer_params(entry:, category_id:, expected_category_id:, scheme_id: @jpw_scheme.id, **filters)
       {
         entry_id: entry.id,
         scheme_id: scheme_id,

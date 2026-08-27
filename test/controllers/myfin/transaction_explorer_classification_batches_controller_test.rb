@@ -6,7 +6,7 @@ class Myfin::TransactionExplorerClassificationBatchesControllerTest < ActionDisp
     @family = @user.family
     Myfin::BootstrapFamily.call(family: @family)
     @entity = @family.myfin_entities.find_by!(name: "JPW Personal")
-    @scheme = @family.myfin_category_schemes.find_by!(name: "WDG")
+    @scheme = @family.myfin_category_schemes.find_by!(name: "JPW")
     @old_category = @scheme.scheme_categories.create!(name: "Batch original")
     @new_category = @scheme.scheme_categories.create!(name: "Batch replacement")
     sign_in @user
@@ -52,8 +52,38 @@ class Myfin::TransactionExplorerClassificationBatchesControllerTest < ActionDisp
     end
   end
 
+  test "rejects a batch that applies a JPW category to Donna" do
+    donna = @family.myfin_entities.find_by!(name: "Donna")
+    dis_scheme = @family.myfin_category_schemes.find_by!(name: "DIS")
+    dis_category = dis_scheme.scheme_categories.create!(name: "Donna Shopping")
+    personal_entry = create_entry("Batch personal row")
+    donna_entry = create_entry(
+      "Batch Donna row",
+      entity: donna,
+      scheme: dis_scheme,
+      category: dis_category
+    )
+
+    assert_no_difference -> { Myfin::ClassificationChange.count } do
+      patch myfin_transaction_explorer_classification_batch_path,
+        params: {
+          edits: [
+            edit_params(personal_entry),
+            edit_params(donna_entry).merge(expected_category_id: nil)
+          ]
+        },
+        as: :turbo_stream
+    end
+
+    assert_response :unprocessable_entity
+    assert_equal @old_category,
+      personal_entry.transaction.myfin_classifications.reload.find_by!(category_scheme: @scheme).scheme_category
+    assert_equal dis_category,
+      donna_entry.transaction.myfin_classifications.reload.find_by!(category_scheme: dis_scheme).scheme_category
+  end
+
   private
-    def create_entry(name)
+    def create_entry(name, entity: @entity, scheme: @scheme, category: @old_category)
       entry = accounts(:depository).entries.create!(
         entryable: Transaction.new,
         date: Date.new(2026, 8, 5),
@@ -62,11 +92,11 @@ class Myfin::TransactionExplorerClassificationBatchesControllerTest < ActionDisp
         currency: "USD"
       )
       Myfin::EntryAllocation.replace_for!(entry, [
-        Myfin::EntryAllocation.new(entity: @entity, amount: 120, allocation_source: "manual")
+        Myfin::EntryAllocation.new(entity: entity, amount: 120, allocation_source: "manual")
       ])
       Myfin::Imports::ClassificationWriter.call(
         sure_transaction: entry.transaction,
-        classifications: { "WDG" => @old_category.name }
+        classifications: { scheme.name => category.name }
       )
       entry
     end

@@ -2,7 +2,10 @@ module Myfin
   module TransactionExplorer
     class Filters
       NONE_VALUE = "__none__"
-      FILTER_KEYS = %i[entity_ids years months types wdg_categories jpw_categories].freeze
+      FILTER_KEYS = %i[
+        entity_ids years months types wdg_categories jpw_categories
+        detail_category_ids wdg_rollup_ids include_tag_ids exclude_tag_ids
+      ].freeze
       INTEGER_KEYS = %i[years months].freeze
 
       def self.from_params(params)

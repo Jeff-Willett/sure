@@ -1,53 +1,34 @@
 <% content_for :hide_myfin_profile_selector, true %>
+<% content_for :fixed_grid, true %>
+<% content_for :head do %>
+  <%= stylesheet_link_tag "tabulator.min", "myfin_tabulator", "data-turbo-track": "reload" %>
+<% end %>
 
-<div class="@container pb-8 lg:-mx-10">
+<%= turbo_frame_tag "transaction-explorer-workspace",
+      class: "myfin-tabulator-shell @container flex min-h-0 flex-1 flex-col lg:-mx-10",
+      data: { turbo_action: "replace" } do %>
   <h1 class="sr-only"><%= t("myfin.transaction_explorer.title") %></h1>
 
   <div id="transaction-explorer-filters">
     <%= render "filters", report: @report %>
   </div>
 
-  <div
-    id="transaction-explorer-shared-set"
-    class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-secondary bg-surface px-4 py-2.5 text-xs text-secondary"
-    data-testid="transaction-explorer-shared-set"
-    data-ledger-count="<%= @report.rows.size %>"
-    data-rollup-count="<%= @report.rows.size %>">
-    <span class="inline-flex h-1.5 w-1.5 rounded-full bg-success"></span>
-    <strong class="text-primary"><%= t("myfin.transaction_explorer.shared_set", count: @report.rows.size) %></strong>
-    <span class="text-subdued">Rollup <%= @report.rows.size %></span>
-    <span class="text-subdued">Ledger <%= @report.rows.size %></span>
-  </div>
-
-  <div id="transaction-explorer-metrics">
-    <%= render "metrics", metrics: @report.metrics %>
-  </div>
-
-  <div
-    class="grid items-start border-b border-secondary bg-container @3xl:grid-cols-[var(--transaction-explorer-rollup-width,32%)_0.5rem_minmax(0,1fr)]"
-    data-controller="transaction-explorer-split transaction-explorer-grid transaction-explorer-columns"
-    data-transaction-explorer-grid-edit-mode-value="false"
-    data-transaction-explorer-grid-batch-url-value="<%= myfin_transaction_explorer_classification_batch_path(request.query_parameters) %>"
-    data-transaction-explorer-grid-copied-message-value="<%= t("myfin.transaction_explorer.copied_cells", count: "__COUNT__") %>"
-    data-transaction-explorer-grid-no-changes-message-value="<%= t("myfin.transaction_explorer.no_batch_changes") %>"
-    data-transaction-explorer-grid-updated-message-value="<%= t("myfin.transaction_explorer.updated_cells", count: "__COUNT__") %>">
-    <div id="transaction-explorer-rollup">
-      <%= render "rollup", rollup: @report.rollup %>
-    </div>
+  <% if @report.excluded_tag_names.any? %>
     <div
-      class="group relative hidden h-full cursor-col-resize bg-container @3xl:block"
-      role="separator"
-      tabindex="0"
-      aria-label="<%= t("myfin.transaction_explorer.resize_rollup") %>"
-      aria-orientation="vertical"
-      data-transaction-explorer-split-target="handle"
-      data-action="pointerdown->transaction-explorer-split#start keydown->transaction-explorer-split#keydown dblclick->transaction-explorer-split#reset">
-      <span class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-secondary transition-colors group-hover:bg-info group-focus-visible:bg-info motion-reduce:transition-none"></span>
+      class="border-b border-secondary bg-warning/10 px-4 py-2 text-xs text-primary"
+      data-testid="transaction-explorer-active-exclusions">
+      <%= t(
+        "myfin.transaction_explorer.excluding_tags",
+        tags: @report.excluded_tag_names.to_sentence
+      ) %>
     </div>
-    <div id="transaction-explorer-ledger">
-      <%= render "ledger", rows: @visible_rows, total_count: @report.rows.size, category_options: @report.category_options %>
-    </div>
-  </div>
+  <% end %>
 
-  <div id="transaction-explorer-edit-result" hidden></div>
-</div>
+  <%= render "tabulator_grid",
+        rows: @report.rows,
+        total_count: @report.rows.size,
+        category_options: @report.category_options,
+        tag_options: @report.tag_options,
+        rollup: @report.rollup,
+        rollup_mode: @report.rollup_mode %>
+<% end %>

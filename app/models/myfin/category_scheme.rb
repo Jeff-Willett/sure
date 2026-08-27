@@ -9,6 +9,12 @@ module Myfin
       class_name: "Myfin::SchemeCategory",
       inverse_of: :category_scheme,
       dependent: :destroy
+    has_many :source_rollup_mappings,
+      through: :scheme_categories,
+      source: :wdg_rollup_mapping
+    has_many :target_rollup_mappings,
+      through: :scheme_categories,
+      source: :incoming_rollup_mappings
     has_many :transaction_classifications,
       class_name: "Myfin::TransactionClassification",
       inverse_of: :category_scheme,

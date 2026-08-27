@@ -1,9 +1,11 @@
 import { autoUpdate } from "@floating-ui/dom";
 import { Controller } from "@hotwired/stimulus";
+import { activeTagFragment, parseTagNames } from "utils/tag_input";
 
 export default class extends Controller {
   static targets = [
     "button",
+    "input",
     "menu",
     "search",
     "option",
@@ -48,11 +50,12 @@ export default class extends Controller {
     this.isOpen ? this.close() : this.open();
   }
 
-  open(focusOption = false) {
+  open(requestedFocus = false) {
+    const focusOption = requestedFocus === true;
     this.isOpen = true;
-    this.buttonTarget.setAttribute("aria-expanded", "true");
+    this.triggerElement.setAttribute("aria-expanded", "true");
     this.menuTarget.classList.remove("hidden");
-    this.searchTarget.value = "";
+    if (!this.spreadsheetMode) this.searchTarget.value = "";
     this.filter();
     this.startAutoUpdate();
 
@@ -73,7 +76,7 @@ export default class extends Controller {
   close() {
     this.isOpen = false;
     this.stopAutoUpdate();
-    this.buttonTarget.setAttribute("aria-expanded", "false");
+    this.triggerElement.setAttribute("aria-expanded", "false");
     this.menuTarget.classList.remove("opacity-100", "translate-y-0");
     this.menuTarget.classList.add(
       "opacity-0",
@@ -105,7 +108,7 @@ export default class extends Controller {
   filter() {
     this.clearCreateError();
 
-    const query = this.searchTarget.value.trim().toLowerCase();
+    const query = this.queryValue.toLowerCase();
     let hasExactMatch = false;
 
     this.optionTargets.forEach((option) => {
@@ -119,7 +122,7 @@ export default class extends Controller {
     const canCreate = query.length > 0 && !hasExactMatch;
     this.createFormTarget.classList.toggle("hidden", !canCreate);
     this.createFormTarget.classList.toggle("flex", canCreate);
-    this.createNameElement.textContent = this.searchTarget.value.trim();
+    this.createNameElement.textContent = this.queryValue;
     this.syncActiveOption();
   }
 
@@ -132,6 +135,94 @@ export default class extends Controller {
       event.preventDefault();
       this.createTag();
     }
+  }
+
+  async handleInputKeydown(event) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      this.open(true);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      this.close();
+      return;
+    }
+
+    if (event.key !== "," && event.key !== "Enter") return;
+
+    event.preventDefault();
+    await this.commitSpreadsheetInput({
+      trailingComma: event.key === ",",
+      close: event.key === "Enter",
+    });
+  }
+
+  handleInputBlur() {
+    setTimeout(() => {
+      if (this.element.contains(document.activeElement)) return;
+
+      this.commitSpreadsheetInput({ close: true });
+    }, 0);
+  }
+
+  async commitSpreadsheetInput({ trailingComma = false, close = false } = {}) {
+    if (!this.spreadsheetMode || this.creating) return;
+
+    this.creating = true;
+    this.clearCreateError();
+
+    try {
+      const ids = [];
+      for (const name of parseTagNames(this.inputTarget.value)) {
+        const option = this.optionTargets.find(
+          (candidate) =>
+            candidate.dataset.tagName.toLowerCase() === name.toLowerCase(),
+        );
+
+        if (option) {
+          ids.push(option.dataset.tagId);
+          continue;
+        }
+
+        const id = await this.createSpreadsheetTag(name);
+        if (id) ids.push(id);
+      }
+
+      this.selectedIds = new Set(ids);
+      this.renderSelection();
+      if (trailingComma && this.inputTarget.value) {
+        this.inputTarget.value = `${this.inputTarget.value}, `;
+      }
+      await this.submitForm();
+      if (close) this.close();
+    } finally {
+      this.creating = false;
+    }
+  }
+
+  async createSpreadsheetTag(name) {
+    const response = await fetch(this.createUrlValue, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-CSRF-Token": this.csrfToken,
+      },
+      body: JSON.stringify({
+        tag: { name, color: this.defaultColorValue },
+      }),
+    });
+    const tag = await this.parseJson(response);
+
+    if (!response.ok) {
+      this.showCreateError(tag.errors?.join(", ") || tag.error);
+      return null;
+    }
+
+    this.createFormTarget.insertAdjacentHTML("beforebegin", tag.html);
+    return String(tag.id);
   }
 
   async createTag() {
@@ -192,14 +283,20 @@ export default class extends Controller {
       this.hiddenInputsElement.appendChild(
         this.buildHiddenInput(option.dataset.tagId),
       );
-      const badge = option.querySelector("[data-tag-select-badge]");
-      if (badge) {
-        this.selectionContainerTarget.appendChild(badge.cloneNode(true));
+      if (!this.spreadsheetMode) {
+        const badge = option.querySelector("[data-tag-select-badge]");
+        if (badge) {
+          this.selectionContainerTarget.appendChild(badge.cloneNode(true));
+        }
       }
       this.updateOption(option);
     });
 
-    if (selectedOptions.length === 0) {
+    if (this.spreadsheetMode) {
+      this.inputTarget.value = selectedOptions
+        .map((option) => option.dataset.tagName)
+        .join(", ");
+    } else if (selectedOptions.length === 0) {
       this.selectionContainerTarget.appendChild(this.buildPlaceholder());
     }
   }
@@ -260,7 +357,7 @@ export default class extends Controller {
   }
 
   handleKeydown(event) {
-    if (!this.isOpen && event.target === this.buttonTarget) {
+    if (!this.isOpen && event.target === this.triggerElement) {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
         this.open(true);
@@ -273,7 +370,7 @@ export default class extends Controller {
     if (event.key === "Escape" && this.isOpen) {
       event.preventDefault();
       this.close();
-      this.buttonTarget.focus();
+      this.triggerElement.focus();
       return;
     }
 
@@ -370,8 +467,8 @@ export default class extends Controller {
   }
 
   startAutoUpdate() {
-    if (!this._cleanup && this.hasButtonTarget && this.hasMenuTarget) {
-      this._cleanup = autoUpdate(this.buttonTarget, this.menuTarget, () =>
+    if (!this._cleanup && this.triggerElement && this.hasMenuTarget) {
+      this._cleanup = autoUpdate(this.triggerElement, this.menuTarget, () =>
         this.updatePosition(),
       );
     }
@@ -412,7 +509,7 @@ export default class extends Controller {
 
     const container = this.getScrollParent(this.element);
     const containerRect = container.getBoundingClientRect();
-    const buttonRect = this.buttonTarget.getBoundingClientRect();
+    const buttonRect = this.triggerElement.getBoundingClientRect();
     const menuHeight = this.menuTarget.scrollHeight;
 
     const spaceBelow = containerRect.bottom - buttonRect.bottom;
@@ -443,6 +540,20 @@ export default class extends Controller {
     return document.querySelector("meta[name='csrf-token']")?.content;
   }
 
+  get spreadsheetMode() {
+    return this.hasInputTarget;
+  }
+
+  get triggerElement() {
+    return this.spreadsheetMode ? this.inputTarget : this.buttonTarget;
+  }
+
+  get queryValue() {
+    return this.spreadsheetMode
+      ? activeTagFragment(this.inputTarget.value)
+      : this.searchTarget.value.trim();
+  }
+
   get hiddenInputsElement() {
     return this.element.querySelector("[data-tag-select-hidden-inputs]");
   }
@@ -456,8 +567,9 @@ export default class extends Controller {
 
     this.createErrorTarget.textContent = message || "Could not create tag";
     this.createErrorTarget.classList.remove("hidden");
-    this.searchTarget.setAttribute("aria-invalid", "true");
-    this.searchTarget.focus({ preventScroll: true });
+    const input = this.spreadsheetMode ? this.inputTarget : this.searchTarget;
+    input.setAttribute("aria-invalid", "true");
+    input.focus({ preventScroll: true });
   }
 
   async parseJson(response) {
@@ -473,7 +585,8 @@ export default class extends Controller {
 
     this.createErrorTarget.textContent = "";
     this.createErrorTarget.classList.add("hidden");
-    this.searchTarget.removeAttribute("aria-invalid");
+    const input = this.spreadsheetMode ? this.inputTarget : this.searchTarget;
+    input.removeAttribute("aria-invalid");
   }
 
   buildPlaceholder() {
