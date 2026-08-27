@@ -378,7 +378,9 @@ export default class extends Controller {
     });
 
     this.visibleIds = new Set(report.rows.map(({ id }) => id));
-    await this.table.updateData(this.displayRows(report.rows));
+    if (report.rows.length > 0) {
+      await this.table.updateData(this.displayRows(report.rows));
+    }
     this.table.setFilter(this.explorerRowFilter);
     this.currentReport = report;
     this.currentFilterSearch = filterSearch;
@@ -428,7 +430,9 @@ export default class extends Controller {
       this.explorerRowFilter = ({ id }) => this.visibleIds.has(id);
       const selectedIds = this.table.getSelectedData().map(({ id }) => id);
       await this.table.replaceData(this.displayRows(this.workingRows));
-      await this.table.updateData(this.displayRows(this.currentReport.rows));
+      if (this.currentReport.rows.length > 0) {
+        await this.table.updateData(this.displayRows(this.currentReport.rows));
+      }
       this.table.setFilter(this.explorerRowFilter);
       this.table.selectRow(selectedIds.filter((id) => this.visibleIds.has(id)));
       this.renderReport(this.currentReport);

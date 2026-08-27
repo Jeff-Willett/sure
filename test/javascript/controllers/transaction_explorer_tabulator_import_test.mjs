@@ -31,3 +31,10 @@ test("working-set callbacks are scoped to the active connection", async () => {
   assert.match(source, /this\.loadToken !== loadToken/);
   assert.match(source, /this\.workingDataAbortController\.abort\(\)/);
 });
+
+test("empty filters do not send an empty updateData payload", async () => {
+  const source = await readFile(controllerUrl, "utf8");
+
+  assert.match(source, /if \(report\.rows\.length > 0\)/);
+  assert.match(source, /if \(this\.currentReport\.rows\.length > 0\)/);
+});
