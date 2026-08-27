@@ -216,7 +216,7 @@ module Myfin
           rows
             .select { |row| excluded_key == :years || keep_filter?(:years, row.date.year) }
             .select { |row| excluded_key == :months || keep_filter?(:months, row.date.month) }
-            .select { |row| excluded_key == :types || keep_filter?(:types, row.type) }
+            .select { |row| excluded_key == :types || type_filter_match?(row) }
             .select { |row| excluded_key == :wdg_categories || keep_filter?(:wdg_categories, row.wdg) }
             .select { |row| excluded_key == :jpw_categories || keep_filter?(:jpw_categories, row.jpw) }
             .select { |row| excluded_key == :detail_category_ids || keep_filter?(:detail_category_ids, row.detail_category_id) }
@@ -231,6 +231,15 @@ module Myfin
           return true unless filters.explicit?(key)
 
           filters.values_for(key).include?(value)
+        end
+
+        def type_filter_match?(row)
+          return true unless filters.explicit?(:types)
+
+          selected_types = filters.values_for(:types)
+          return selected_types.include?("Expense") || selected_types.include?("Refund") if row.type == "Refund"
+
+          selected_types.include?(row.type)
         end
 
         def optional_filter_match?(key, value)
@@ -349,7 +358,7 @@ module Myfin
             },
             years: rows.map { |row| row.date.year }.uniq.sort,
             months: rows.map { |row| row.date.month }.uniq.sort,
-            types: rows.map(&:type).uniq.sort_by { |type| TYPE_ORDER.fetch(type, 99) },
+            types: rows.map { |row| row.type == "Refund" ? "Expense" : row.type }.uniq.sort_by { |type| TYPE_ORDER.fetch(type, 99) },
             wdg_categories: rows.map(&:wdg).uniq.sort,
             jpw_categories: rows.map(&:jpw).uniq.sort,
             detail_categories: rows.filter_map do |row|

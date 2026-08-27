@@ -1,6 +1,11 @@
 import { Controller } from "@hotwired/stimulus";
 import { TabulatorFull as Tabulator } from "tabulator-tables";
 import { parseTagNames } from "utils/tag_input";
+import {
+  TRANSACTION_EXPLORER_VIEW_STATE_KEY,
+  parseExplorerViewState,
+  serializeExplorerViewState,
+} from "../utils/transaction_explorer_view_state.mjs";
 
 export default class extends Controller {
   static targets = [
@@ -16,6 +21,9 @@ export default class extends Controller {
   static values = { createTagUrl: String, persistenceId: String };
 
   connect() {
+    this.viewState = this.loadViewState();
+    this.element.dataset.layoutMode = this.viewState.layout;
+    this.restoreRollups();
     this.categoryOptions = JSON.parse(
       this.categoryDataTarget.content.textContent,
     );
@@ -25,7 +33,7 @@ export default class extends Controller {
         this.dataTarget.content?.textContent || this.dataTarget.textContent,
       ),
       index: "id",
-      layout: "fitDataStretch",
+      layout: this.viewState.layout,
       height: "100%",
       movableColumns: true,
       selectableRows: true,
@@ -35,7 +43,7 @@ export default class extends Controller {
       history: true,
       groupBy: "entity",
       groupStartOpen: true,
-      persistence: { columns: true, sort: true, group: true },
+      persistence: { sort: true, group: true },
       persistenceMode: "local",
       persistenceID: this.persistenceIdValue,
       rowHeader: {
@@ -50,10 +58,17 @@ export default class extends Controller {
       columns: this.columns,
     });
 
-    this.table.on("tableBuilt", () => this.renderLayoutMenu());
+    this.table.on("tableBuilt", () => {
+      this.restoreColumnState();
+      this.renderLayoutMenu();
+    });
+    this.table.on("columnMoved", () => this.persistViewState());
+    this.table.on("columnResized", () => this.persistViewState());
+    this.table.on("columnVisibilityChanged", () => this.persistViewState());
   }
 
   disconnect() {
+    this.persistViewState();
     this.table?.destroy();
     this.table = null;
   }
@@ -234,9 +249,10 @@ export default class extends Controller {
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.checked = column.isVisible();
-        checkbox.addEventListener("change", () =>
-          checkbox.checked ? column.show() : column.hide(),
-        );
+        checkbox.addEventListener("change", () => {
+          checkbox.checked ? column.show() : column.hide();
+          this.persistViewState();
+        });
         label.append(
           checkbox,
           document.createTextNode(column.getDefinition().title),
@@ -246,14 +262,86 @@ export default class extends Controller {
   }
 
   fitColumns() {
+    this.viewState = { ...this.viewState, layout: "fitColumns" };
+    this.element.dataset.layoutMode = "fitColumns";
     this.table.setOptions({ layout: "fitColumns" });
+    this.persistViewState();
   }
 
   toggleRollups() {
     const opening = this.rollupPaneTarget.hidden;
     this.rollupPaneTarget.hidden = !opening;
     this.rollupButtonTarget.setAttribute("aria-expanded", String(opening));
+    this.viewState = { ...this.viewState, rollupsOpen: opening };
+    this.persistViewState();
     requestAnimationFrame(() => this.table.redraw(true));
+  }
+
+  restoreRollups() {
+    this.rollupPaneTarget.hidden = !this.viewState.rollupsOpen;
+    this.rollupButtonTarget.setAttribute(
+      "aria-expanded",
+      String(this.viewState.rollupsOpen),
+    );
+  }
+
+  restoreColumnState() {
+    if (!this.viewState.columns) return;
+
+    let previousField = null;
+    this.viewState.columns.forEach(({ field, width, visible }) => {
+      const column = this.table.getColumn(field);
+      if (!column) return;
+
+      if (previousField) {
+        this.table.moveColumn(field, previousField, true);
+      } else {
+        const firstField = this.table
+          .getColumns()
+          .map((candidate) => candidate.getField())
+          .find(Boolean);
+        if (firstField && firstField !== field) {
+          this.table.moveColumn(field, firstField, false);
+        }
+      }
+
+      column.setWidth(width);
+      visible ? column.show() : column.hide();
+      previousField = field;
+    });
+  }
+
+  persistViewState() {
+    if (!this.table) return;
+
+    const columns = this.table
+      .getColumns()
+      .filter((column) => column.getField())
+      .map((column) => ({
+        field: column.getField(),
+        width: column.getWidth(),
+        visible: column.isVisible(),
+      }));
+    this.viewState = { ...this.viewState, columns };
+
+    try {
+      localStorage.setItem(
+        TRANSACTION_EXPLORER_VIEW_STATE_KEY,
+        serializeExplorerViewState(this.viewState),
+      );
+    } catch (_error) {
+      // The grid remains usable when browser storage is unavailable.
+    }
+  }
+
+  loadViewState() {
+    try {
+      return parseExplorerViewState(
+        localStorage.getItem(TRANSACTION_EXPLORER_VIEW_STATE_KEY),
+      );
+    } catch (_error) {
+      return parseExplorerViewState(null);
+    }
   }
 
   collapseAll() {

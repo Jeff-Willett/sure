@@ -283,6 +283,28 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     shopping = expense_rollup.groups.flat_map(&:categories).find { |category| category.jpw == "Shopping" }
     assert_equal(-100.to_d, shopping.amount)
     assert_equal 2, shopping.count
+
+    expense_only = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @everything_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params(
+        entity_ids: [ @personal.id ],
+        types: [ "Expense" ],
+        search: "refund net test"
+      )
+    )
+    income_only = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @everything_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params(
+        entity_ids: [ @personal.id ],
+        types: [ "Income" ],
+        search: "refund net test"
+      )
+    )
+
+    assert_equal [ refund.id, purchase.id ], expense_only.rows.map(&:entry_id)
+    assert_empty income_only.rows
   end
 
   test "available slicers retain unselected entities and classification values" do

@@ -7,7 +7,6 @@ module Myfin
         detail_category_ids wdg_rollup_ids include_tag_ids exclude_tag_ids
       ].freeze
       INTEGER_KEYS = %i[years months].freeze
-      LEGACY_ALL_TYPES = %w[Expense Income Transfer].freeze
 
       def self.from_params(params)
         new(params.to_h.with_indifferent_access)
@@ -40,10 +39,6 @@ module Myfin
         def normalize(key, raw)
           values = Array(raw).compact_blank.reject { |value| value == NONE_VALUE }
           return values.map(&:to_i).uniq.freeze if INTEGER_KEYS.include?(key)
-
-          if key == :types && (LEGACY_ALL_TYPES - values).empty?
-            values << "Refund"
-          end
 
           values.map(&:to_s).uniq.freeze
         end
