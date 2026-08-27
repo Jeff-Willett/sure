@@ -133,7 +133,12 @@ function filterRows(rows, filters, excludedKey = null, sort = true) {
 
 function matchesRequired(filters, key, value) {
   if (!hasFilter(filters, key)) return true;
-  if (value == null) return false;
+  if (value == null) {
+    return (
+      key === "detail_category_ids" &&
+      selectedSet(filters, key).has("__uncategorized__")
+    );
+  }
 
   return selectedSet(filters, key).has(String(value));
 }

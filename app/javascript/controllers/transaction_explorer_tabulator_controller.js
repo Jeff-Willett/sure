@@ -506,7 +506,7 @@ export default class extends Controller {
               category.jpw,
               category.amount,
               "detail_category_ids",
-              category.detail_category_id,
+              category.detail_category_id || "__uncategorized__",
               "flex items-start justify-between gap-3 rounded-md px-3 py-1.5 text-xs text-secondary transition-colors hover:bg-surface-hover hover:text-primary",
               this.rollupEmoji(category.jpw),
             ),

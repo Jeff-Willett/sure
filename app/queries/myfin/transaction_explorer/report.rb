@@ -233,7 +233,7 @@ module Myfin
             .select { |row| excluded_key == :types || type_filter_match?(row) }
             .select { |row| excluded_key == :wdg_categories || keep_filter?(:wdg_categories, row.wdg) }
             .select { |row| excluded_key == :jpw_categories || keep_filter?(:jpw_categories, row.jpw) }
-            .select { |row| excluded_key == :detail_category_ids || keep_filter?(:detail_category_ids, row.detail_category_id) }
+            .select { |row| excluded_key == :detail_category_ids || detail_category_filter_match?(row) }
             .select { |row| excluded_key == :wdg_rollup_ids || optional_filter_match?(:wdg_rollup_ids, row.wdg_rollup_id) }
             .select { |row| excluded_key == :include_tag_ids || include_tag_match?(row) }
             .reject { |row| excluded_key != :exclude_tag_ids && exclude_tag_match?(row) }
@@ -261,6 +261,15 @@ module Myfin
           return true if filters.values_for(key).empty?
 
           filters.values_for(key).include?(value)
+        end
+
+        def detail_category_filter_match?(row)
+          return true unless filters.explicit?(:detail_category_ids)
+
+          selected = filters.values_for(:detail_category_ids)
+          return selected.include?("__uncategorized__") if row.detail_category_id.nil?
+
+          selected.include?(row.detail_category_id)
         end
 
         def include_tag_match?(row)
@@ -408,7 +417,7 @@ module Myfin
             jpw_categories: filters.selected_values(:jpw_categories, available: filter_options.jpw_categories),
             detail_category_ids: filters.selected_values(
               :detail_category_ids,
-              available: filter_options.detail_categories.map(&:first)
+              available: filter_options.detail_categories.map(&:first) + [ "__uncategorized__" ]
             ),
             wdg_rollup_ids: selected_optional_values(:wdg_rollup_ids),
             include_tag_ids: selected_tag_values(:include_tag_ids),

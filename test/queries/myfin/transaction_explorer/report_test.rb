@@ -167,6 +167,31 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     assert_includes report.rows.map(&:entry_id), donna_entry.id
   end
 
+  test "filters explicitly to uncategorized rows" do
+    uncategorized = create_entry(
+      entity_amounts: { @personal => 40 },
+      date: Date.new(2026, 8, 7),
+      name: "Explicit uncategorized row",
+      amount: 40
+    )
+    create_entity_entry(
+      entity: @personal,
+      scheme: @jpw_scheme,
+      category: @jpw_scheme.scheme_categories.create!(name: "Explicit categorized row"),
+      amount: 30
+    )
+
+    report = Myfin::TransactionExplorer::Report.call(
+      user: @user,
+      profile: @everything_profile,
+      filters: Myfin::TransactionExplorer::Filters.from_params(
+        detail_category_ids: [ "__uncategorized__" ]
+      )
+    )
+
+    assert_equal [ uncategorized.id ], report.rows.map(&:entry_id)
+  end
+
   test "loads entries once and preserves selected allocation amounts" do
     personal_entry = create_entry(
       entity_amounts: { @personal => 40 },

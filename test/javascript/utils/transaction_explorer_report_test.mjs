@@ -146,6 +146,26 @@ test("keeps uncategorized rows when the category filter is implicit", () => {
   );
 });
 
+test("filters explicitly to uncategorized rows", () => {
+  const uncategorized = row({
+    id: "uncategorized",
+    detail_category_id: null,
+    detail_category: "Uncategorized",
+  });
+  const categorized = row({
+    id: "categorized",
+    detail_category_id: "groceries",
+    detail_category: "Groceries",
+  });
+
+  assert.deepEqual(
+    deriveExplorerReport([uncategorized, categorized], {
+      detail_category_ids: ["__uncategorized__"],
+    }).rows.map(({ id }) => id),
+    ["uncategorized"],
+  );
+});
+
 test("builds entity rollups when the reporting profile is not WDG", () => {
   const report = deriveExplorerReport(
     dataset,
