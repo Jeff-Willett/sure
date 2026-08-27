@@ -142,7 +142,7 @@ class MyfinTransactionExplorerControllerTest < ActionDispatch::IntegrationTest
     }
 
     assert_response :success
-    assert_select "details", count: 1 do
+    assert_select "details[data-controller='auto-open'][data-auto-open-storage-key-value='myfin-transaction-explorer-categories-open'][data-action='toggle->auto-open#remember']", count: 1 do
       assert_select "summary", text: /Categories and tags/
     end
     assert_select "details[open]", count: 0
