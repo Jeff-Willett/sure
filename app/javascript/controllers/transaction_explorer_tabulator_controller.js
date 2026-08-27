@@ -40,7 +40,6 @@ export default class extends Controller {
     persistenceId: String,
     rollupMode: String,
     showingTemplate: String,
-    subunit: Number,
     uncategorizedLabel: String,
     workingDataUrl: String,
   };
@@ -464,7 +463,7 @@ export default class extends Controller {
   }
 
   formatMoney(amount) {
-    return this.moneyFormatter.format(Number(amount) / this.subunitValue);
+    return this.moneyFormatter.format(Number(amount));
   }
 
   renderRollup(rollup) {

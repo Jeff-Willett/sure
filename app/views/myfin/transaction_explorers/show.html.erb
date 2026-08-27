@@ -11,7 +11,6 @@
         transaction_explorer_tabulator_persistence_id_value: "myfin-transaction-explorer-v3",
         transaction_explorer_tabulator_create_tag_url_value: tags_path(format: :json),
         transaction_explorer_tabulator_currency_value: Current.family.currency,
-        transaction_explorer_tabulator_subunit_value: Money::Currency.new(Current.family.currency).minor_unit_conversion,
         transaction_explorer_tabulator_rollup_mode_value: @report.rollup_mode,
         transaction_explorer_tabulator_working_data_url_value: data_myfin_transaction_explorer_path(format: :json),
         transaction_explorer_tabulator_filter_storage_key_value: "myfin-transaction-explorer-filters",
