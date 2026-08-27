@@ -415,10 +415,7 @@ module Myfin
             types: filters.selected_values(:types, available: filter_options.types),
             wdg_categories: filters.selected_values(:wdg_categories, available: filter_options.wdg_categories),
             jpw_categories: filters.selected_values(:jpw_categories, available: filter_options.jpw_categories),
-            detail_category_ids: filters.selected_values(
-              :detail_category_ids,
-              available: filter_options.detail_categories.map(&:first) + [ "__uncategorized__" ]
-            ),
+            detail_category_ids: selected_detail_category_values(filter_options),
             wdg_rollup_ids: selected_optional_values(:wdg_rollup_ids),
             include_tag_ids: selected_tag_values(:include_tag_ids),
             exclude_tag_ids: selected_tag_values(:exclude_tag_ids)
@@ -427,6 +424,12 @@ module Myfin
 
         def selected_tag_values(key)
           selected_optional_values(key)
+        end
+
+        def selected_detail_category_values(filter_options)
+          return filters.values_for(:detail_category_ids).map(&:to_s) if filters.explicit?(:detail_category_ids)
+
+          filter_options.detail_categories.map { |id, _scheme, _name| id.to_s }
         end
 
         def selected_optional_values(key)

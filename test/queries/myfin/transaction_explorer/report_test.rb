@@ -190,6 +190,7 @@ class MyfinTransactionExplorerReportTest < ActiveSupport::TestCase
     )
 
     assert_equal [ uncategorized.id ], report.rows.map(&:entry_id)
+    assert_equal [ "__uncategorized__" ], report.selected_filters[:detail_category_ids]
   end
 
   test "loads entries once and preserves selected allocation amounts" do
