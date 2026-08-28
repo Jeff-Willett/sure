@@ -42,6 +42,57 @@ class MyfinTransactionExplorerCellEditingTest < ApplicationSystemTestCase
     assert_selector ".tabulator-cell.tabulator-editing"
   end
 
+  test "drag selects cells vertically without selecting page text" do
+    visit_explorer
+    source = find("[role='gridcell']", text: @category.name, exact_text: true)
+    target = find("[role='gridcell']", text: @third_category.name, exact_text: true)
+
+    drag_result = page.execute_script(<<~JS, source, target)
+      const source = arguments[0];
+      const target = arguments[1];
+      const categoryCells = [...document.querySelectorAll(
+        "[tabulator-field='detail_category_id']",
+      )];
+      const expectedCount = Math.abs(
+        categoryCells.indexOf(target) - categoryCells.indexOf(source),
+      ) + 1;
+      const text = document.querySelector("[tabulator-field='description']");
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+
+      source.dispatchEvent(new MouseEvent("mousedown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        buttons: 1,
+      }));
+      const selectionAllowed = target.dispatchEvent(new Event("selectstart", {
+        bubbles: true,
+        cancelable: true,
+      }));
+      target.dispatchEvent(new MouseEvent("mouseover", {
+        bubbles: true,
+        cancelable: true,
+        buttons: 1,
+      }));
+      document.dispatchEvent(new MouseEvent("mouseup", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      }));
+      return { expectedCount, selectionAllowed };
+    JS
+
+    assert_equal false, drag_result.fetch("selectionAllowed")
+    assert_equal drag_result.fetch("expectedCount"),
+      all(".myfin-cell-selected[tabulator-field='detail_category_id']").size
+    assert_equal 0,
+      all(".myfin-cell-selected[tabulator-field='tags']").size
+    assert_equal "", page.evaluate_script("window.getSelection().toString()")
+  end
+
   test "pastes one copied category into a selected range" do
     visit_explorer
     find("[role='gridcell']", text: @second_category.name, exact_text: true).click

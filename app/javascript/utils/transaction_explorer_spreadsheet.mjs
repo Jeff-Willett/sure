@@ -72,12 +72,12 @@ export function fillDownEdits({ cells, selection }) {
   );
 }
 
-export function tabulatorSelectionRange(cells, anchor, focus) {
+export function tabulatorSelectionRange(cells, anchor, focus, { lockField = false } = {}) {
   const rows = [...new Set(cells.map((cell) => cell.entryId))];
   const anchorRow = rows.indexOf(anchor?.entryId);
   const focusRow = rows.indexOf(focus?.entryId);
   const anchorColumn = TABULATOR_FIELDS.indexOf(anchor?.field);
-  const focusColumn = TABULATOR_FIELDS.indexOf(focus?.field);
+  const focusColumn = lockField ? anchorColumn : TABULATOR_FIELDS.indexOf(focus?.field);
   if ([anchorRow, focusRow, anchorColumn, focusColumn].some((index) => index < 0)) return [];
 
   const rowStart = Math.min(anchorRow, focusRow);

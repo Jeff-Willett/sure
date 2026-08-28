@@ -86,6 +86,18 @@ test("selects a rectangular Detail category and Tags range", () => {
   );
 });
 
+test("locks pointer selection to the anchor column", () => {
+  assert.deepEqual(
+    spreadsheet.tabulatorSelectionRange(
+      tabulatorCells,
+      tabulatorCells[0],
+      tabulatorCells[3],
+      { lockField: true },
+    ),
+    [ tabulatorCells[0], tabulatorCells[2] ],
+  );
+});
+
 test("copies a rectangular Detail category and Tags range as typed clipboard data", () => {
   assert.equal(typeof spreadsheet.tabulatorCopyPayload, "function");
   assert.deepEqual(

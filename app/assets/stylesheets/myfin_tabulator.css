@@ -55,6 +55,10 @@
   cursor: cell;
 }
 
+.myfin-tabulator-shell .myfin-cell-dragging .tabulator-cell {
+  user-select: none;
+}
+
 .myfin-tabulator-shell .tabulator-cell.myfin-cell-selected {
   background: color-mix(in srgb, var(--color-info) 14%, var(--color-container)) !important;
 }

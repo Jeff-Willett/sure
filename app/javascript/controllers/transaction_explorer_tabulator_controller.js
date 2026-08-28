@@ -73,11 +73,18 @@ export default class extends Controller {
     this.onSpreadsheetPaste = (event) => this.pasteSpreadsheetSelection(event);
     this.onSpreadsheetMouseUp = () => {
       this.spreadsheetDragging = false;
+      this.gridTarget.classList.remove("myfin-cell-dragging");
+    };
+    this.onSpreadsheetSelectStart = (event) => {
+      if (this.spreadsheetDragging && this.gridTarget.contains(event.target)) {
+        event.preventDefault();
+      }
     };
     this.gridTarget.tabIndex = 0;
     this.gridTarget.addEventListener("copy", this.onSpreadsheetCopy);
     this.gridTarget.addEventListener("paste", this.onSpreadsheetPaste);
     document.addEventListener("mouseup", this.onSpreadsheetMouseUp);
+    document.addEventListener("selectstart", this.onSpreadsheetSelectStart);
     this.workingDataAbortController = new AbortController();
     this.viewState = this.loadViewState();
     this.moneyFormatter = new Intl.NumberFormat(undefined, {
@@ -169,6 +176,8 @@ export default class extends Controller {
     this.gridTarget.removeEventListener("copy", this.onSpreadsheetCopy);
     this.gridTarget.removeEventListener("paste", this.onSpreadsheetPaste);
     document.removeEventListener("mouseup", this.onSpreadsheetMouseUp);
+    document.removeEventListener("selectstart", this.onSpreadsheetSelectStart);
+    this.gridTarget.classList.remove("myfin-cell-dragging");
     window.removeEventListener("popstate", this.onPopState);
     this.persistViewState();
     this.table?.destroy();
@@ -362,7 +371,10 @@ export default class extends Controller {
     const selected = this.spreadsheetCellRecord(cell);
     if (!selected) return;
 
+    event.preventDefault();
+    window.getSelection()?.removeAllRanges();
     this.spreadsheetDragging = true;
+    this.gridTarget.classList.add("myfin-cell-dragging");
     this.activeSpreadsheetCell = selected;
     if (event.shiftKey && this.spreadsheetSelectionAnchor) {
       this.selectedSpreadsheetCells = tabulatorSelectionRange(
@@ -388,6 +400,7 @@ export default class extends Controller {
       this.spreadsheetCells(),
       this.spreadsheetSelectionAnchor,
       focus,
+      { lockField: true },
     );
     this.renderSpreadsheetSelection();
   }
@@ -463,9 +476,7 @@ export default class extends Controller {
     }
     return {
       fields,
-      rows: matrix.map((row) =>
-        row.map((label) => ({ label })),
-      ),
+      rows: matrix.map((row) => row.map((label) => ({ label }))),
     };
   }
 
@@ -536,7 +547,10 @@ export default class extends Controller {
       (result.rows || []).forEach((row) => this.patchWorkingRow(row));
       await this.applyCurrentFilters({ historyAction: null });
       this.announce(
-        this.updatedCellsMessageValue.replace("__COUNT__", String(edits.length)),
+        this.updatedCellsMessageValue.replace(
+          "__COUNT__",
+          String(edits.length),
+        ),
       );
     } catch (error) {
       this.announce(
@@ -549,11 +563,13 @@ export default class extends Controller {
   spreadsheetCells() {
     if (!this.table) return [];
 
-    return this.table.getRows("active").flatMap((row) =>
-      [row.getCell("detail_category_id"), row.getCell("tags")]
-        .map((cell) => this.spreadsheetCellRecord(cell))
-        .filter(Boolean),
-    );
+    return this.table
+      .getRows("active")
+      .flatMap((row) =>
+        [row.getCell("detail_category_id"), row.getCell("tags")]
+          .map((cell) => this.spreadsheetCellRecord(cell))
+          .filter(Boolean),
+      );
   }
 
   spreadsheetCellRecord(cell) {
