@@ -10,13 +10,23 @@ import {
 } from "utils/transaction_explorer_history";
 import { deriveExplorerReport } from "utils/transaction_explorer_report";
 import {
+  parseClipboardText,
+  tabulatorCopyPayload,
+  tabulatorPasteEdits,
+  tabulatorSelectionRange,
+} from "utils/transaction_explorer_spreadsheet";
+import {
   TRANSACTION_EXPLORER_VIEW_STATE_KEY,
   parseExplorerViewState,
   serializeExplorerViewState,
 } from "utils/transaction_explorer_view_state";
 
+const EXPLORER_CLIPBOARD_TYPE = "application/x-myfin-explorer+json";
+const SPREADSHEET_FIELDS = ["detail_category", "tags"];
+
 export default class extends Controller {
   static targets = [
+    "announcement",
     "categoryData",
     "count",
     "data",
@@ -31,6 +41,8 @@ export default class extends Controller {
     "tagData",
   ];
   static values = {
+    cellBatchUrl: String,
+    copiedCellsMessage: String,
     createTagUrl: String,
     currency: String,
     defaultFilters: Object,
@@ -38,9 +50,12 @@ export default class extends Controller {
     excludedTagsTemplate: String,
     filterStorageKey: String,
     persistenceId: String,
+    noCellChangesMessage: String,
+    pasteErrorTemplate: String,
     rollupMode: String,
     showingTemplate: String,
     uncategorizedLabel: String,
+    updatedCellsMessage: String,
     workingDataUrl: String,
   };
 
@@ -50,6 +65,19 @@ export default class extends Controller {
     this.loadToken = loadToken;
     this.tableStateRestored = false;
     this.restoredPersistedFilters = false;
+    this.activeSpreadsheetCell = null;
+    this.spreadsheetSelectionAnchor = null;
+    this.selectedSpreadsheetCells = [];
+    this.spreadsheetDragging = false;
+    this.onSpreadsheetCopy = (event) => this.copySpreadsheetSelection(event);
+    this.onSpreadsheetPaste = (event) => this.pasteSpreadsheetSelection(event);
+    this.onSpreadsheetMouseUp = () => {
+      this.spreadsheetDragging = false;
+    };
+    this.gridTarget.tabIndex = 0;
+    this.gridTarget.addEventListener("copy", this.onSpreadsheetCopy);
+    this.gridTarget.addEventListener("paste", this.onSpreadsheetPaste);
+    document.addEventListener("mouseup", this.onSpreadsheetMouseUp);
     this.workingDataAbortController = new AbortController();
     this.viewState = this.loadViewState();
     this.moneyFormatter = new Intl.NumberFormat(undefined, {
@@ -93,6 +121,7 @@ export default class extends Controller {
       selectableRowsRangeMode: "drag",
       clipboard: true,
       clipboardCopyRowRange: "selected",
+      editTriggerEvent: "dblclick",
       history: true,
       groupBy: "entity",
       groupStartOpen: true,
@@ -115,6 +144,16 @@ export default class extends Controller {
     this.table.on("columnMoved", () => this.persistViewState());
     this.table.on("columnResized", () => this.persistViewState());
     this.table.on("columnVisibilityChanged", () => this.persistViewState());
+    this.table.on("cellMouseDown", (event, cell) =>
+      this.selectSpreadsheetCell(event, cell),
+    );
+    this.table.on("cellMouseOver", (event, cell) =>
+      this.extendSpreadsheetSelection(event, cell),
+    );
+    this.table.on("cellContext", (event, cell) =>
+      this.openSpreadsheetEditor(event, cell),
+    );
+    this.table.on("renderComplete", () => this.renderSpreadsheetSelection());
     this.onPopState = () => this.restoreHistoryState();
     window.addEventListener("popstate", this.onPopState);
     this.loadingPromise = this.loadWorkingRows(initialFilters, loadToken);
@@ -127,6 +166,9 @@ export default class extends Controller {
     this.resolveTableReady?.();
     this.resolveTableReady = null;
     clearTimeout(this.searchTimeout);
+    this.gridTarget.removeEventListener("copy", this.onSpreadsheetCopy);
+    this.gridTarget.removeEventListener("paste", this.onSpreadsheetPaste);
+    document.removeEventListener("mouseup", this.onSpreadsheetMouseUp);
     window.removeEventListener("popstate", this.onPopState);
     this.persistViewState();
     this.table?.destroy();
@@ -155,6 +197,7 @@ export default class extends Controller {
       {
         title: "Detail category",
         field: "detail_category_id",
+        cssClass: "myfin-spreadsheet-cell",
         width: 180,
         formatter: (cell) => cell.getRow().getData().detail_category,
         accessorClipboard: (_value, data) => data.detail_category,
@@ -172,6 +215,7 @@ export default class extends Controller {
       {
         title: "Tags",
         field: "tags",
+        cssClass: "myfin-spreadsheet-cell",
         width: 220,
         editable: (cell) => cell.getRow().getData().editable,
         editor: "list",
@@ -311,6 +355,278 @@ export default class extends Controller {
     if (index < 0) return;
 
     this.workingRows[index] = { ...this.workingRows[index], ...patch };
+  }
+
+  selectSpreadsheetCell(event, cell) {
+    if (event.button !== 0) return;
+    const selected = this.spreadsheetCellRecord(cell);
+    if (!selected) return;
+
+    this.spreadsheetDragging = true;
+    this.activeSpreadsheetCell = selected;
+    if (event.shiftKey && this.spreadsheetSelectionAnchor) {
+      this.selectedSpreadsheetCells = tabulatorSelectionRange(
+        this.spreadsheetCells(),
+        this.spreadsheetSelectionAnchor,
+        selected,
+      );
+    } else {
+      this.spreadsheetSelectionAnchor = selected;
+      this.selectedSpreadsheetCells = [selected];
+    }
+    this.gridTarget.focus({ preventScroll: true });
+    this.renderSpreadsheetSelection();
+  }
+
+  extendSpreadsheetSelection(event, cell) {
+    if (!this.spreadsheetDragging || event.buttons !== 1) return;
+    const focus = this.spreadsheetCellRecord(cell);
+    if (!focus || !this.spreadsheetSelectionAnchor) return;
+
+    this.activeSpreadsheetCell = focus;
+    this.selectedSpreadsheetCells = tabulatorSelectionRange(
+      this.spreadsheetCells(),
+      this.spreadsheetSelectionAnchor,
+      focus,
+    );
+    this.renderSpreadsheetSelection();
+  }
+
+  openSpreadsheetEditor(event, cell) {
+    const selected = this.spreadsheetCellRecord(cell);
+    if (!selected) return;
+
+    event.preventDefault();
+    this.activeSpreadsheetCell = selected;
+    this.spreadsheetSelectionAnchor = selected;
+    this.selectedSpreadsheetCells = [selected];
+    this.renderSpreadsheetSelection();
+    cell.edit();
+  }
+
+  copySpreadsheetSelection(event) {
+    const selection = this.currentSpreadsheetSelection();
+    if (selection.length === 0) return;
+
+    const payload = tabulatorCopyPayload(selection);
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    event.clipboardData?.setData("text/plain", payload.text);
+    event.clipboardData?.setData(
+      EXPLORER_CLIPBOARD_TYPE,
+      JSON.stringify({ fields: payload.fields, rows: payload.rows }),
+    );
+    this.announce(
+      this.copiedCellsMessageValue.replace(
+        "__COUNT__",
+        String(selection.length),
+      ),
+    );
+  }
+
+  pasteSpreadsheetSelection(event) {
+    const active = this.currentActiveSpreadsheetCell();
+    if (!active) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    try {
+      const clipboard = this.spreadsheetClipboard(event.clipboardData, active);
+      const edits = tabulatorPasteEdits({
+        cells: this.spreadsheetCells(),
+        selection: this.currentSpreadsheetSelection(),
+        active,
+        clipboard,
+        resolveCategoryId: ({ source, target }) =>
+          this.categoryIdForLabel(target.schemeName, source.label),
+        resolveTagIds: ({ source }) => this.tagIdsForClipboardValue(source),
+      });
+      this.submitSpreadsheetEdits(edits);
+    } catch (error) {
+      this.announce(
+        this.pasteErrorTemplateValue.replace("__ERROR__", error.message),
+      );
+    }
+  }
+
+  spreadsheetClipboard(clipboardData, active) {
+    const typed = clipboardData?.getData(EXPLORER_CLIPBOARD_TYPE);
+    if (typed) return JSON.parse(typed);
+
+    const matrix = parseClipboardText(
+      clipboardData?.getData("text/plain") || "",
+    );
+    const start = SPREADSHEET_FIELDS.indexOf(active.field);
+    const fields = SPREADSHEET_FIELDS.slice(start, start + matrix[0].length);
+    if (fields.length !== matrix[0].length) {
+      throw new Error("Paste range exceeds the editable grid");
+    }
+    return {
+      fields,
+      rows: matrix.map((row) =>
+        row.map((label) => ({ label })),
+      ),
+    };
+  }
+
+  categoryIdForLabel(schemeName, label) {
+    const match = (this.categoryOptions[schemeName] || []).find(
+      ([, categoryName]) => categoryName === label,
+    );
+    return match?.[0] || null;
+  }
+
+  tagIdsForClipboardValue(source) {
+    if (Array.isArray(source.tagIds)) {
+      const known = new Set(this.tagCatalog.map(({ id }) => String(id)));
+      if (source.tagIds.some((id) => !known.has(String(id)))) {
+        throw new Error("The copied tag list is no longer available");
+      }
+      return source.tagIds.map(String);
+    }
+
+    return parseTagNames(source.label).map((name) => {
+      const tag = this.tagCatalog.find(
+        (candidate) => candidate.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (!tag) throw new Error(`Unknown tag: ${name}`);
+      return String(tag.id);
+    });
+  }
+
+  async submitSpreadsheetEdits(edits) {
+    if (edits.length === 0) {
+      this.announce(this.noCellChangesMessageValue);
+      return;
+    }
+
+    const payload = edits.map((edit) =>
+      edit.field === "detail_category"
+        ? {
+            field: edit.field,
+            entry_id: edit.entryId,
+            scheme_id: edit.schemeId,
+            category_id: edit.categoryId,
+            expected_category_id: edit.expectedCategoryId,
+          }
+        : {
+            field: edit.field,
+            entry_id: edit.entryId,
+            tag_ids: edit.tagIds,
+            expected_tag_ids: edit.expectedTagIds,
+          },
+    );
+
+    try {
+      const response = await fetch(this.cellBatchUrlValue, {
+        method: "PATCH",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-Token": this.csrfToken,
+        },
+        body: JSON.stringify({ edits: payload }),
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        throw new Error(`Batch save failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      (result.rows || []).forEach((row) => this.patchWorkingRow(row));
+      await this.applyCurrentFilters({ historyAction: null });
+      this.announce(
+        this.updatedCellsMessageValue.replace("__COUNT__", String(edits.length)),
+      );
+    } catch (error) {
+      this.announce(
+        this.pasteErrorTemplateValue.replace("__ERROR__", error.message),
+      );
+      window.Turbo?.visit(window.location.href, { action: "replace" });
+    }
+  }
+
+  spreadsheetCells() {
+    if (!this.table) return [];
+
+    return this.table.getRows("active").flatMap((row) =>
+      [row.getCell("detail_category_id"), row.getCell("tags")]
+        .map((cell) => this.spreadsheetCellRecord(cell))
+        .filter(Boolean),
+    );
+  }
+
+  spreadsheetCellRecord(cell) {
+    const field = cell?.getColumn().getField();
+    if (!cell || !["detail_category_id", "tags"].includes(field)) {
+      return null;
+    }
+    const data = cell.getRow().getData();
+    if (!data.editable) return null;
+
+    return {
+      entryId: String(data.id),
+      field: field === "detail_category_id" ? "detail_category" : "tags",
+      schemeId: data.scheme_id ? String(data.scheme_id) : null,
+      schemeName: data.detail_scheme,
+      categoryId: data.detail_category_id
+        ? String(data.detail_category_id)
+        : null,
+      tagIds: (data.tag_ids || []).map(String),
+      label: field === "detail_category_id" ? data.detail_category : data.tags,
+      component: cell,
+    };
+  }
+
+  currentSpreadsheetSelection() {
+    const selected = new Set(
+      this.selectedSpreadsheetCells.map((cell) =>
+        this.spreadsheetCellKey(cell),
+      ),
+    );
+    return this.spreadsheetCells().filter((cell) =>
+      selected.has(this.spreadsheetCellKey(cell)),
+    );
+  }
+
+  currentActiveSpreadsheetCell() {
+    if (!this.activeSpreadsheetCell) return null;
+    const key = this.spreadsheetCellKey(this.activeSpreadsheetCell);
+    return this.spreadsheetCells().find(
+      (cell) => this.spreadsheetCellKey(cell) === key,
+    );
+  }
+
+  renderSpreadsheetSelection() {
+    if (!this.table) return;
+    const selection = this.currentSpreadsheetSelection();
+    const active = this.currentActiveSpreadsheetCell();
+    this.selectedSpreadsheetCells = selection;
+    this.activeSpreadsheetCell = active;
+
+    this.gridTarget
+      .querySelectorAll(".myfin-cell-selected, .myfin-cell-active")
+      .forEach((element) => {
+        element.classList.remove("myfin-cell-selected", "myfin-cell-active");
+        element.setAttribute("aria-selected", "false");
+      });
+    selection.forEach((cell) => {
+      cell.component.getElement().classList.add("myfin-cell-selected");
+      cell.component.getElement().setAttribute("aria-selected", "true");
+    });
+    if (active) {
+      active.component.getElement().classList.add("myfin-cell-active");
+    }
+  }
+
+  spreadsheetCellKey(cell) {
+    return `${cell.entryId}:${cell.field}`;
+  }
+
+  announce(message) {
+    if (this.hasAnnouncementTarget) {
+      this.announcementTarget.textContent = message;
+    }
   }
 
   filterSubmitted(event) {

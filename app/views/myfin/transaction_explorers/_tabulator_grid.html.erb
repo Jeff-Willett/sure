@@ -44,4 +44,5 @@
   <template data-transaction-explorer-tabulator-target="data"><%= raw json_escape(transaction_explorer_tabulator_rows(rows).to_json) %></template>
   <template data-transaction-explorer-tabulator-target="categoryData"><%= raw json_escape(category_options.to_json) %></template>
   <template data-transaction-explorer-tabulator-target="tagData"><%= raw json_escape(tag_options.map { |tag| { id: tag.id, name: tag.name } }.to_json) %></template>
+  <p class="sr-only" aria-live="polite" data-transaction-explorer-tabulator-target="announcement"></p>
 </section>

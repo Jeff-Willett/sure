@@ -50,3 +50,16 @@
 .myfin-tabulator-shell .tabulator-row.tabulator-selected .tabulator-cell {
   background: color-mix(in srgb, var(--color-info) 16%, var(--color-container));
 }
+
+.myfin-tabulator-shell .tabulator-cell.myfin-spreadsheet-cell {
+  cursor: cell;
+}
+
+.myfin-tabulator-shell .tabulator-cell.myfin-cell-selected {
+  background: color-mix(in srgb, var(--color-info) 14%, var(--color-container)) !important;
+}
+
+.myfin-tabulator-shell .tabulator-cell.myfin-cell-active {
+  box-shadow: inset 0 0 0 2px var(--color-info);
+  z-index: 1;
+}

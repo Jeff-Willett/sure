@@ -10,6 +10,8 @@
         controller: "transaction-explorer-tabulator",
         transaction_explorer_tabulator_persistence_id_value: "myfin-transaction-explorer-v3",
         transaction_explorer_tabulator_create_tag_url_value: tags_path(format: :json),
+        transaction_explorer_tabulator_cell_batch_url_value: myfin_transaction_explorer_cell_batch_path(format: :json),
+        transaction_explorer_tabulator_copied_cells_message_value: t("myfin.transaction_explorer.copied_spreadsheet_cells", count: "__COUNT__"),
         transaction_explorer_tabulator_currency_value: Current.family.currency,
         transaction_explorer_tabulator_rollup_mode_value: @report.rollup_mode,
         transaction_explorer_tabulator_working_data_url_value: data_myfin_transaction_explorer_path(format: :json),
@@ -18,7 +20,10 @@
         transaction_explorer_tabulator_excluded_tags_template_value: t("myfin.transaction_explorer.excluding_tags", tags: "__TAGS__"),
         transaction_explorer_tabulator_empty_message_value: t("myfin.transaction_explorer.empty"),
         transaction_explorer_tabulator_uncategorized_label_value: t("myfin.transaction_explorer.category_uncategorized"),
-        transaction_explorer_tabulator_showing_template_value: t("myfin.transaction_explorer.showing", shown: "__SHOWN__", total: "__TOTAL__")
+        transaction_explorer_tabulator_showing_template_value: t("myfin.transaction_explorer.showing", shown: "__SHOWN__", total: "__TOTAL__"),
+        transaction_explorer_tabulator_no_cell_changes_message_value: t("myfin.transaction_explorer.no_spreadsheet_changes"),
+        transaction_explorer_tabulator_paste_error_template_value: t("myfin.transaction_explorer.spreadsheet_paste_error", error: "__ERROR__"),
+        transaction_explorer_tabulator_updated_cells_message_value: t("myfin.transaction_explorer.updated_spreadsheet_cells", count: "__COUNT__")
       } do %>
   <h1 class="sr-only"><%= t("myfin.transaction_explorer.title") %></h1>
 
