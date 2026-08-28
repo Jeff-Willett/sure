@@ -99,8 +99,10 @@ module Myfin
 
       def normalized_tag_ids(ids)
         submitted = Array(ids).reject(&:blank?).map(&:to_s).uniq.sort
-        resolved = Current.family.tags.where(id: submitted).pluck(:id).map(&:to_s).sort
-        raise InvalidBatch unless resolved == submitted
+        tags = Current.family.tags.where(id: submitted).to_a
+        resolved = tags.map { |tag| tag.id.to_s }.sort
+        hidden = tags.any? { |tag| tag.name.match?(TransactionExplorer::Report::LEGACY_CATEGORY_TAG) }
+        raise InvalidBatch unless resolved == submitted && !hidden
 
         resolved
       end
@@ -127,10 +129,17 @@ module Myfin
         entry = edit.fetch(:entry)
         transaction = entry.transaction
         transaction.lock!
-        current_ids = transaction.tag_ids.map(&:to_s).sort
+        current_tags = transaction.tags.to_a
+        current_ids = current_tags
+          .reject { |tag| tag.name.match?(TransactionExplorer::Report::LEGACY_CATEGORY_TAG) }
+          .map { |tag| tag.id.to_s }
+          .sort
         raise StaleTags unless current_ids == edit.fetch(:expected_tag_ids)
 
-        transaction.tag_ids = edit.fetch(:tag_ids)
+        hidden_ids = current_tags
+          .select { |tag| tag.name.match?(TransactionExplorer::Report::LEGACY_CATEGORY_TAG) }
+          .map(&:id)
+        transaction.tag_ids = (hidden_ids + edit.fetch(:tag_ids)).uniq
         entry.lock_saved_attributes!
         entry.mark_user_modified!
         transaction.lock_attr!(:tag_ids)

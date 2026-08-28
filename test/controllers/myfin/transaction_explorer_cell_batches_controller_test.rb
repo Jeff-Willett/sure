@@ -47,6 +47,21 @@ class Myfin::TransactionExplorerCellBatchesControllerTest < ActionDispatch::Inte
     assert_equal [ @old_tag.id ], @entry.transaction.tags.reload.map(&:id)
   end
 
+  test "replaces visible tags while preserving hidden classification tags" do
+    hidden_tag = @family.tags.create!(name: "JPW: Cell batch hidden category")
+    @entry.transaction.update!(tag_ids: [ hidden_tag.id ])
+
+    patch "/myfin/transaction_explorer_cell_batch",
+      params: {
+        edits: [ tags_edit.merge(expected_tag_ids: []) ]
+      },
+      as: :json
+
+    assert_response :success
+    assert_equal [ hidden_tag.id, *@new_tags.map(&:id) ].sort,
+      @entry.transaction.tags.reload.map(&:id).sort
+  end
+
   private
     def create_entry
       entry = accounts(:depository).entries.create!(
